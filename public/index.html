@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Controle - Acesso CPRT</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+  <div id="login-screen" class="screen active">
+    <div class="login-card">
+      <div class="logo-area">
+        <i class="fa-solid fa-shield-halved"></i>
+        <h1>CPRT Access</h1>
+      </div>
+      <form id="login-form">
+        <div class="input-group">
+          <i class="fa-solid fa-user"></i>
+          <input type="text" id="login-input" placeholder="Usuário" required>
+        </div>
+        <div class="input-group">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="password-input" placeholder="Senha" required>
+        </div>
+        <button type="submit" class="btn primary-btn">Entrar</button>
+        <div id="login-error" class="error-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="dashboard-screen" class="screen">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <i class="fa-solid fa-shield-halved"></i>
+        <h2>CPRT</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-target="panel-home"><i class="fa-solid fa-house"></i> Início</button>
+        <button class="nav-btn" data-target="panel-users"><i class="fa-solid fa-users"></i> Usuários</button>
+        <button class="nav-btn" data-target="panel-portarias"><i class="fa-solid fa-door-open"></i> Portarias</button>
+        <button class="nav-btn" data-target="panel-upload"><i class="fa-solid fa-file-excel"></i> Upload XLS</button>
+        <button class="nav-btn" data-target="panel-leituras"><i class="fa-solid fa-list-check"></i> Leituras RFID</button>
+        <button class="nav-btn" data-target="panel-pessoas"><i class="fa-solid fa-id-card"></i> Pessoas Cadastradas</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="logout-btn" class="nav-btn"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <h2 id="current-page-title">Início</h2>
+        <div class="user-info">
+          <span id="user-name-display">Admin</span>
+          <div class="avatar"><i class="fa-solid fa-user-astronaut"></i></div>
+        </div>
+      </header>
+
+      <div class="content-area">
+        <!-- Home Panel -->
+        <div id="panel-home" class="panel active">
+          <div class="welcome-banner">
+            <h3>Bem-vindo ao Sistema de Controle de Acesso CPRT</h3>
+            <p>Gerencie portarias, usuários e sincronizações de leitura RFID em tempo real.</p>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <i class="fa-solid fa-users text-blue"></i>
+              <div class="stat-info">
+                <h4>Total Usuários</h4>
+                <p id="stat-users">-</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-door-open text-purple"></i>
+              <div class="stat-info">
+                <h4>Portarias</h4>
+                <p id="stat-portarias">-</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <i class="fa-solid fa-id-card text-green"></i>
+              <div class="stat-info">
+                <h4>Pessoas Cadastradas</h4>
+                <p id="stat-pessoas">-</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users Panel -->
+        <div id="panel-users" class="panel">
+          <div class="panel-header">
+            <h3>Gerenciar Usuários</h3>
+            <button class="btn secondary-btn" onclick="openModal('user-modal')"><i class="fa-solid fa-plus"></i> Novo Usuário</button>
+          </div>
+          <div class="table-container">
+            <table id="users-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Login</th>
+                  <th>Email</th>
+                  <th>Perfil</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Portarias Panel -->
+        <div id="panel-portarias" class="panel">
+          <div class="panel-header">
+            <h3>Gerenciar Portarias</h3>
+            <button class="btn secondary-btn" onclick="openModal('portaria-modal')"><i class="fa-solid fa-plus"></i> Nova Portaria</button>
+          </div>
+          <div class="table-container">
+            <table id="portarias-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Descrição</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Upload Panel -->
+        <div id="panel-upload" class="panel">
+          <div class="panel-header">
+            <h3>Upload de Planilha de Pessoas</h3>
+          </div>
+          <div class="upload-area">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <p>Selecione o arquivo <b>dados_acesso.xls</b></p>
+            <input type="file" id="file-input" accept=".xls,.xlsx" />
+            <button class="btn primary-btn" id="upload-btn">Processar Arquivo</button>
+            <div id="upload-status"></div>
+          </div>
+        </div>
+
+        <!-- Leituras Panel -->
+        <div id="panel-leituras" class="panel">
+          <div class="panel-header">
+            <h3>Leituras RFID (Sincronizadas pelo Mobile)</h3>
+            <button class="btn secondary-btn" onclick="loadLeituras()"><i class="fa-solid fa-rotate-right"></i> Atualizar</button>
+          </div>
+          <div class="table-container">
+            <table id="leituras-table">
+              <thead>
+                <tr>
+                  <th>Data/Hora Leitura</th>
+                  <th>Portaria</th>
+                  <th>Credencial</th>
+                  <th>Situação</th>
+                  <th>ID Celular</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pessoas Panel -->
+        <div id="panel-pessoas" class="panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
+            <h3>Pessoas (XLS)</h3>
+            <div class="search-bar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <select id="search-field" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                <option value="matricula">Matrícula</option>
+                <option value="nome">Nome</option>
+              </select>
+              <input type="text" id="search-input" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              
+              <label for="search-status" style="margin-left: 10px;">Situação</label>
+              <select id="search-status" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                <option value="todas">Todas</option>
+                <option value="1">Permitido</option>
+                <option value="0">Bloqueado</option>
+              </select>
+              
+              <button class="btn primary-btn" id="search-btn" style="width: auto; padding: 8px 15px;">Buscar</button>
+              <button class="btn secondary-btn" onclick="loadPessoas(true)" style="padding: 8px 15px;"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table id="pessoas-table">
+              <thead>
+                <tr>
+                  <th>Matrícula</th>
+                  <th>Nome</th>
+                  <th>Situação</th>
+                  <th>Credencial</th>
+                  <th>Observação</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div class="modal-overlay" id="user-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Novo Usuário</h3>
+        <button class="close-btn" onclick="closeModal('user-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="create-user-form">
+          <input type="text" id="u-nome" placeholder="Nome" required>
+          <input type="email" id="u-email" placeholder="Email" required>
+          <input type="text" id="u-login" placeholder="Login" required>
+          <input type="text" id="u-cpf" placeholder="CPF" required>
+          <input type="password" id="u-senha" placeholder="Senha" required>
+          <select id="u-perfil">
+            <option value="MOBILE">MOBILE (Agente Portaria)</option>
+            <option value="MASTER">MASTER (Administrador)</option>
+          </select>
+          <button type="submit" class="btn primary-btn">Salvar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="portaria-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Nova Portaria</h3>
+        <button class="close-btn" onclick="closeModal('portaria-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="create-portaria-form">
+          <input type="text" id="p-descricao" placeholder="Descrição da Portaria" required>
+          <button type="submit" class="btn primary-btn">Salvar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

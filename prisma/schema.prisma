@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  login     String   @unique
+  cpf       String   @unique
+  senha     String
+  perfil    String   // "MASTER" ou "MOBILE"
+  logs      LogOperacao[]
+}
+
+model Portaria {
+  id        Int      @id @default(autoincrement())
+  descricao String
+  leituras  LeituraRFID[]
+}
+
+model Pessoa {
+  matricula                 String   @id
+  nome                      String
+  credenciais               String?
+  situacao                  Int      // 0 = Acesso Bloqueado, 1 = Acesso Permitido
+  observacao                String?
+  data_ultima_sincronizacao DateTime @default(now())
+}
+
+model LeituraRFID {
+  id                      String   @id @default(uuid())
+  credencial              String
+  id_portaria             Int
+  portaria                Portaria @relation(fields: [id_portaria], references: [id])
+  data_hora_leitura       DateTime
+  data_hora_sincronizacao DateTime @default(now())
+  id_celular              String
+  situacao                Int      // 0 ou 1
+}
+
+model LogOperacao {
+  id         Int       @id @default(autoincrement())
+  id_usuario Int?
+  usuario    Usuario?  @relation(fields: [id_usuario], references: [id], onDelete: SetNull)
+  acao       String
+  entidade   String
+  detalhes   String    @db.Text
+  data_hora  DateTime  @default(now())
+}
