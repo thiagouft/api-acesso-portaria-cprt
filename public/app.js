@@ -290,16 +290,137 @@ document.getElementById('search-input').addEventListener('keyup', (e) => {
 
 // Leituras
 async function loadLeituras() {
-  const res = await fetchAuth('/sync');
+  const dtInicial = document.getElementById('leituras-data-inicial').value;
+  const dtFinal = document.getElementById('leituras-data-final').value;
+  const matricula = document.getElementById('leituras-matricula').value;
+  const nome = document.getElementById('leituras-nome').value;
+
+  const params = new URLSearchParams();
+  if (dtInicial) params.append('dataInicial', dtInicial);
+  if (dtFinal) params.append('dataFinal', dtFinal);
+  if (matricula) params.append('matricula', matricula);
+  if (nome) params.append('nome', nome);
+
+  const res = await fetchAuth(`/sync?${params.toString()}`);
   const leituras = await res.json();
   const tbody = document.querySelector('#leituras-table tbody');
+  
+  if (!leituras || leituras.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhuma leitura encontrada para os filtros aplicados.</td></tr>';
+    return;
+  }
+
+  // Verifica estado atual das colunas para manter caso tenha sido alterado
+  const isHidden = (colIndex) => {
+    const cb = document.querySelector(`#column-menu input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
+
   tbody.innerHTML = leituras.map(l => `
     <tr>
-      <td>${new Date(l.data_hora_leitura).toLocaleString()}</td>
-      <td>${l.portaria?.descricao || l.id_portaria}</td>
-      <td>${l.credencial}</td>
-      <td><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
-      <td>${l.id_celular}</td>
+      <td data-col="0" class="${isHidden(0) ? 'hidden-col' : ''}">${l.pessoa_matricula || '-'}</td>
+      <td data-col="1" class="${isHidden(1) ? 'hidden-col' : ''}">${l.pessoa_nome || 'N/A'}</td>
+      <td data-col="2" class="${isHidden(2) ? 'hidden-col' : ''}">${l.credencial}</td>
+      <td data-col="3" class="${isHidden(3) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
+      <td data-col="4" class="${isHidden(4) ? 'hidden-col' : ''}">${l.portaria?.descricao || l.id_portaria}</td>
+      <td data-col="5" class="${isHidden(5) ? 'hidden-col' : ''}"><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
+      <td data-col="6" class="${isHidden(6) ? 'hidden-col' : ''}">${l.id_celular}</td>
     </tr>
   `).join('');
+}
+
+function clearLeiturasFilters() {
+  document.getElementById('leituras-data-inicial').value = '';
+  document.getElementById('leituras-data-final').value = '';
+  document.getElementById('leituras-matricula').value = '';
+  document.getElementById('leituras-nome').value = '';
+  loadLeituras();
+}
+
+// Columns Toggle
+function toggleColumnMenu() {
+  const menu = document.getElementById('column-menu');
+  menu.classList.toggle('hidden');
+}
+
+function toggleColumn(colIndex) {
+  const checkbox = document.querySelector(`#column-menu input[value="${colIndex}"]`);
+  const isChecked = checkbox.checked;
+  const th = document.querySelector(`th[data-col="${colIndex}"]`);
+  const tds = document.querySelectorAll(`td[data-col="${colIndex}"]`);
+  
+  if (isChecked) {
+    if (th) th.classList.remove('hidden-col');
+    tds.forEach(td => td.classList.remove('hidden-col'));
+  } else {
+    if (th) th.classList.add('hidden-col');
+    tds.forEach(td => td.classList.add('hidden-col'));
+  }
+}
+
+// Fechar menu ao clicar fora
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('column-menu');
+  const btn = document.querySelector('button[onclick="toggleColumnMenu()"]');
+  if (menu && btn && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.add('hidden');
+  }
+});
+
+// Export Excel
+function exportLeiturasExcel() {
+  const table = document.getElementById('leituras-table');
+  if(!table) return;
+
+  // Criar clone da tabela para remover colunas ocultas
+  const cloneTable = table.cloneNode(true);
+  const hiddenElements = cloneTable.querySelectorAll('.hidden-col');
+  hiddenElements.forEach(el => el.remove());
+
+  const wb = XLSX.utils.table_to_book(cloneTable, {sheet:"Leituras"});
+  XLSX.writeFile(wb, 'leituras_rfid.xlsx');
+}
+
+// Export PDF
+function exportLeiturasPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'pt', 'a4'); // Paisagem
+
+  const table = document.getElementById('leituras-table');
+  if(!table) return;
+
+  // Extrair cabeçalhos (apenas visíveis)
+  const headers = [];
+  table.querySelectorAll('thead th').forEach(th => {
+    if (!th.classList.contains('hidden-col')) {
+      headers.push(th.innerText);
+    }
+  });
+
+  // Extrair linhas (apenas visíveis)
+  const data = [];
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    if(tr.cells.length === 1 && tr.cells[0].colSpan > 1) return; // Nenhuma leitura
+    
+    const row = [];
+    tr.querySelectorAll('td').forEach(td => {
+      if (!td.classList.contains('hidden-col')) {
+        row.push(td.innerText);
+      }
+    });
+    data.push(row);
+  });
+
+  doc.text("Relatório de Leituras RFID", 40, 40);
+  
+  doc.autoTable({
+    head: [headers],
+    body: data,
+    startY: 50,
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] }
+  });
+
+  doc.save('leituras_rfid.pdf');
 }
