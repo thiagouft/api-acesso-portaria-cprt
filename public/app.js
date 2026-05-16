@@ -36,6 +36,8 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     else if (btn.dataset.target === 'panel-portarias') loadPortarias();
     else if (btn.dataset.target === 'panel-leituras') loadLeituras();
     else if (btn.dataset.target === 'panel-pessoas') loadPessoas();
+    else if (btn.dataset.target === 'panel-veiculos') loadVeiculos();
+    else if (btn.dataset.target === 'panel-leituras-veiculos') loadLeiturasVeiculo();
   });
 });
 
@@ -423,4 +425,172 @@ function exportLeiturasPDF() {
   });
 
   doc.save('leituras_rfid.pdf');
+}
+
+// Veiculos
+async function loadVeiculos() {
+  const res = await fetchAuth('/veiculos');
+  const veiculos = await res.json();
+  const tbody = document.querySelector('#veiculos-table tbody');
+  tbody.innerHTML = veiculos.map(v => `
+    <tr>
+      <td>${v.id}</td>
+      <td>${v.placa}</td>
+      <td>${v.descricao}</td>
+      <td><button class="btn secondary-btn" onclick="deleteVeiculo(${v.id})"><i class="fa-solid fa-trash"></i></button></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('create-veiculo-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const placaInput = document.getElementById('v-placa').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const body = { 
+    placa: placaInput,
+    descricao: document.getElementById('v-descricao').value 
+  };
+  const res = await fetchAuth('/veiculos', { method: 'POST', body: JSON.stringify(body) });
+  if(res.ok) {
+    closeModal('veiculo-modal');
+    loadVeiculos();
+    document.getElementById('create-veiculo-form').reset();
+  } else {
+    const err = await res.json();
+    alert('Erro: ' + (err.error || 'Não foi possível salvar o veículo.'));
+  }
+});
+
+async function deleteVeiculo(id) {
+  if(!confirm('Excluir veículo?')) return;
+  const res = await fetchAuth(`/veiculos/${id}`, { method: 'DELETE' });
+  if(res.ok) loadVeiculos();
+  else alert('Erro ao excluir veículo');
+}
+
+// Leituras Veiculo
+async function loadLeiturasVeiculo() {
+  const dtInicial = document.getElementById('leituras-v-data-inicial').value;
+  const dtFinal = document.getElementById('leituras-v-data-final').value;
+  const placa = document.getElementById('leituras-v-placa').value;
+
+  const params = new URLSearchParams();
+  if (dtInicial) params.append('dataInicial', dtInicial);
+  if (dtFinal) params.append('dataFinal', dtFinal);
+  if (placa) params.append('placa', placa);
+
+  const res = await fetchAuth(`/sync/leituras-veiculo?${params.toString()}`);
+  const leituras = await res.json();
+  const tbody = document.querySelector('#leituras-v-table tbody');
+  
+  if (!leituras || leituras.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhuma leitura encontrada.</td></tr>';
+    return;
+  }
+
+  // Verifica estado atual das colunas para manter caso tenha sido alterado
+  const isHiddenVeiculo = (colIndex) => {
+    const cb = document.querySelector(`#column-menu-veiculos input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
+
+  tbody.innerHTML = leituras.map(l => `
+    <tr>
+      <td data-col="0" class="${isHiddenVeiculo(0) ? 'hidden-col' : ''}">${l.placa}</td>
+      <td data-col="1" class="${isHiddenVeiculo(1) ? 'hidden-col' : ''}">${l.portaria}</td>
+      <td data-col="2" class="${isHiddenVeiculo(2) ? 'hidden-col' : ''}"><span class="badge ${l.sentido === 'ENTRADA' ? 'success' : l.sentido === 'SAIDA' ? 'danger' : 'secondary'}">${l.sentido}</span></td>
+      <td data-col="3" class="${isHiddenVeiculo(3) ? 'hidden-col' : ''}">${l.matricula_condutor || '-'}</td>
+      <td data-col="4" class="${isHiddenVeiculo(4) ? 'hidden-col' : ''}">${l.nome_condutor || '-'}</td>
+      <td data-col="5" class="${isHiddenVeiculo(5) ? 'hidden-col' : ''}">${l.credencial_condutor || '-'}</td>
+      <td data-col="6" class="${isHiddenVeiculo(6) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
+      <td data-col="7" class="${isHiddenVeiculo(7) ? 'hidden-col' : ''}"><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
+      <td data-col="8" class="${isHiddenVeiculo(8) ? 'hidden-col' : ''}">${l.id_celular}</td>
+    </tr>
+  `).join('');
+}
+
+function toggleColumnMenuVeiculos() {
+  const menu = document.getElementById('column-menu-veiculos');
+  menu.classList.toggle('hidden');
+}
+
+function toggleColumnVeiculos(colIndex) {
+  const checkbox = document.querySelector(`#column-menu-veiculos input[value="${colIndex}"]`);
+  const isChecked = checkbox.checked;
+  const th = document.querySelector(`#leituras-v-table th[data-col="${colIndex}"]`);
+  const tds = document.querySelectorAll(`#leituras-v-table td[data-col="${colIndex}"]`);
+  
+  if (isChecked) {
+    if (th) th.classList.remove('hidden-col');
+    tds.forEach(td => td.classList.remove('hidden-col'));
+  } else {
+    if (th) th.classList.add('hidden-col');
+    tds.forEach(td => td.classList.add('hidden-col'));
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const menuV = document.getElementById('column-menu-veiculos');
+  const btnV = document.querySelector('button[onclick="toggleColumnMenuVeiculos()"]');
+  if (menuV && btnV && !menuV.classList.contains('hidden') && !menuV.contains(e.target) && !btnV.contains(e.target)) {
+    menuV.classList.add('hidden');
+  }
+});
+
+function clearLeiturasVeiculoFilters() {
+  document.getElementById('leituras-v-data-inicial').value = '';
+  document.getElementById('leituras-v-data-final').value = '';
+  document.getElementById('leituras-v-placa').value = '';
+  loadLeiturasVeiculo();
+}
+
+function exportLeiturasVeiculoExcel() {
+  const table = document.getElementById('leituras-v-table');
+  if(!table) return;
+
+  const cloneTable = table.cloneNode(true);
+  const hiddenElements = cloneTable.querySelectorAll('.hidden-col');
+  hiddenElements.forEach(el => el.remove());
+
+  const wb = XLSX.utils.table_to_book(cloneTable, {sheet:"Leituras Veículos"});
+  XLSX.writeFile(wb, 'leituras_veiculos.xlsx');
+}
+
+function exportLeiturasVeiculoPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'pt', 'a4');
+
+  const table = document.getElementById('leituras-v-table');
+  if(!table) return;
+
+  const headers = [];
+  table.querySelectorAll('thead th').forEach(th => {
+    if (!th.classList.contains('hidden-col')) {
+      headers.push(th.innerText);
+    }
+  });
+
+  const data = [];
+  table.querySelectorAll('tbody tr').forEach(tr => {
+    if(tr.cells.length === 1 && tr.cells[0].colSpan > 1) return;
+    const row = [];
+    tr.querySelectorAll('td').forEach(td => {
+      if (!td.classList.contains('hidden-col')) {
+        row.push(td.innerText);
+      }
+    });
+    data.push(row);
+  });
+
+  doc.text("Relatório de Leituras de Veículos", 40, 40);
+  
+  doc.autoTable({
+    head: [headers],
+    body: data,
+    startY: 50,
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] }
+  });
+
+  doc.save('leituras_veiculos.pdf');
 }

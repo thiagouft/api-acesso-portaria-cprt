@@ -43,6 +43,8 @@
         <button class="nav-btn" data-target="panel-upload"><i class="fa-solid fa-file-excel"></i> Upload XLS</button>
         <button class="nav-btn" data-target="panel-leituras"><i class="fa-solid fa-list-check"></i> Leituras RFID</button>
         <button class="nav-btn" data-target="panel-pessoas"><i class="fa-solid fa-id-card"></i> Pessoas Cadastradas</button>
+        <button class="nav-btn" data-target="panel-veiculos"><i class="fa-solid fa-car"></i> Veículos</button>
+        <button class="nav-btn" data-target="panel-leituras-veiculos"><i class="fa-solid fa-car-side"></i> Leituras Veículos</button>
       </nav>
       <div class="sidebar-footer">
         <button id="logout-btn" class="nav-btn"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
@@ -181,11 +183,11 @@
             </div>
           </div>
           
-          <div style="display: flex; justify-content: flex-end; padding: 10px 0 5px 0; position: relative;">
+          <div style="display: flex; justify-content: flex-start; padding: 10px 0 5px 0; position: relative;">
             <button class="btn secondary-btn" onclick="toggleColumnMenu()" style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Configurar Colunas">
               <i class="fa-solid fa-table-columns"></i>
             </button>
-            <div id="column-menu" class="column-menu hidden" style="top: 100%; right: 0;">
+            <div id="column-menu" class="column-menu hidden" style="top: 100%; left: 0;">
               <label><input type="checkbox" checked value="0" onchange="toggleColumn(0)"> Matrícula</label>
               <label><input type="checkbox" checked value="1" onchange="toggleColumn(1)"> Nome</label>
               <label><input type="checkbox" checked value="2" onchange="toggleColumn(2)"> Credencial</label>
@@ -252,6 +254,96 @@
           </div>
         </div>
 
+        <!-- Veiculos Panel -->
+        <div id="panel-veiculos" class="panel">
+          <div class="panel-header">
+            <h3>Gerenciar Veículos</h3>
+            <button class="btn secondary-btn" onclick="openModal('veiculo-modal')"><i class="fa-solid fa-plus"></i> Novo Veículo</button>
+          </div>
+          <div class="table-container">
+            <table id="veiculos-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Placa</th>
+                  <th>Descrição</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Leituras Veiculos Panel -->
+        <div id="panel-leituras-veiculos" class="panel">
+          <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; position: relative;">
+              <h3>Leituras de Veículos</h3>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; position: relative;">
+                <button class="btn excel-btn" onclick="exportLeiturasVeiculoExcel()" style="background-color: #217346; color: white;"><i class="fa-solid fa-file-excel"></i> Excel</button>
+                <button class="btn pdf-btn" onclick="exportLeiturasVeiculoPDF()" style="background-color: #e21b1b; color: white;"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+              </div>
+            </div>
+            
+            <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
+
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Data Inicial</label>
+                <input type="date" id="leituras-v-data-inicial" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Data Final</label>
+                <input type="date" id="leituras-v-data-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Placa</label>
+                <input type="text" id="leituras-v-placa" placeholder="Ex: ABC1234" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 120px;">
+              </div>
+              <div style="display: flex; align-items: flex-end; gap: 10px;">
+                <button class="btn primary-btn" onclick="loadLeiturasVeiculo()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                <button class="btn secondary-btn" onclick="clearLeiturasVeiculoFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+              </div>
+            </div>
+          </div>
+          
+          <div style="display: flex; justify-content: flex-start; padding: 10px 0 5px 0; position: relative;">
+            <button class="btn secondary-btn" onclick="toggleColumnMenuVeiculos()" style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Configurar Colunas">
+              <i class="fa-solid fa-table-columns"></i>
+            </button>
+            <div id="column-menu-veiculos" class="column-menu hidden" style="top: 100%; left: 0;">
+              <label><input type="checkbox" checked value="0" onchange="toggleColumnVeiculos(0)"> Placa</label>
+              <label><input type="checkbox" checked value="1" onchange="toggleColumnVeiculos(1)"> Portaria</label>
+              <label><input type="checkbox" checked value="2" onchange="toggleColumnVeiculos(2)"> Sentido</label>
+              <label><input type="checkbox" checked value="3" onchange="toggleColumnVeiculos(3)"> Matrícula Motorista</label>
+              <label><input type="checkbox" checked value="4" onchange="toggleColumnVeiculos(4)"> Nome Motorista</label>
+              <label><input type="checkbox" checked value="5" onchange="toggleColumnVeiculos(5)"> Credencial Motorista</label>
+              <label><input type="checkbox" checked value="6" onchange="toggleColumnVeiculos(6)"> Data/Hora</label>
+              <label><input type="checkbox" checked value="7" onchange="toggleColumnVeiculos(7)"> Situação</label>
+              <label><input type="checkbox" checked value="8" onchange="toggleColumnVeiculos(8)"> ID Celular</label>
+            </div>
+          </div>
+          
+          <div class="table-container" style="margin-top: 5px;">
+            <table id="leituras-v-table">
+              <thead>
+                <tr>
+                  <th data-col="0">Placa</th>
+                  <th data-col="1">Portaria</th>
+                  <th data-col="2">Sentido</th>
+                  <th data-col="3">Matrícula Motorista</th>
+                  <th data-col="4">Nome Motorista</th>
+                  <th data-col="5">Credencial Motorista</th>
+                  <th data-col="6">Data/Hora</th>
+                  <th data-col="7">Situação</th>
+                  <th data-col="8">ID Celular</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
@@ -289,6 +381,22 @@
       <div class="modal-body">
         <form id="create-portaria-form">
           <input type="text" id="p-descricao" placeholder="Descrição da Portaria" required>
+          <button type="submit" class="btn primary-btn">Salvar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="veiculo-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Novo Veículo</h3>
+        <button class="close-btn" onclick="closeModal('veiculo-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="create-veiculo-form">
+          <input type="text" id="v-placa" placeholder="Placa (ex: ABC1234)" required>
+          <input type="text" id="v-descricao" placeholder="Descrição do Veículo" required>
           <button type="submit" class="btn primary-btn">Salvar</button>
         </form>
       </div>

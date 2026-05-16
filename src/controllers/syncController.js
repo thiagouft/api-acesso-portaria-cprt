@@ -124,3 +124,89 @@ export async function getLeituras(request, reply) {
 
   return reply.send(resultado);
 }
+
+export async function syncLeiturasVeiculo(request, reply) {
+  const { leituras } = request.body;
+
+  if (!Array.isArray(leituras) || leituras.length === 0) {
+    return reply.status(400).send({ error: 'Nenhum dado de leitura de veículo fornecido ou formato inválido.' });
+  }
+
+  let count = 0;
+
+  try {
+    for (const leitura of leituras) {
+      // leitura = { id, placa, matricula_condutor, nome_condutor, credencial_condutor, data_hora_leitura, id_celular, situacao }
+      
+      await prisma.leituraVeiculo.create({
+        data: {
+          id: leitura.id,
+          placa: leitura.placa,
+          matricula_condutor: leitura.matricula_condutor,
+          nome_condutor: leitura.nome_condutor,
+          credencial_condutor: leitura.credencial_condutor,
+          data_hora_leitura: new Date(leitura.data_hora_leitura),
+          data_hora_sincronizacao: new Date(),
+          id_celular: leitura.id_celular,
+          situacao: parseInt(leitura.situacao),
+          id_portaria: leitura.id_portaria ? parseInt(leitura.id_portaria) : null,
+          sentido: leitura.sentido || null
+        }
+      });
+      count++;
+    }
+
+    await logOperacao(request.user.id, 'SYNC_MOBILE_VEICULO', 'LeituraVeiculo', { registros_sincronizados: count, id_celular: leituras[0]?.id_celular });
+
+    return reply.status(200).send({ message: `${count} leituras de veículo sincronizadas com sucesso.`, count });
+  } catch (error) {
+    console.error(error);
+    return reply.status(500).send({ error: 'Erro ao sincronizar leituras de veículos.' });
+  }
+}
+
+export async function getLeiturasVeiculo(request, reply) {
+  const { dataInicial, dataFinal, placa } = request.query;
+
+  const where = {};
+  
+  if (placa) {
+    where.placa = {
+      contains: placa
+    };
+  }
+  
+  if (dataInicial || dataFinal) {
+    where.data_hora_leitura = {};
+    if (dataInicial) {
+      where.data_hora_leitura.gte = new Date(dataInicial + 'T00:00:00');
+    }
+    if (dataFinal) {
+      where.data_hora_leitura.lte = new Date(dataFinal + 'T23:59:59');
+    }
+  }
+
+  try {
+    const leituras = await prisma.leituraVeiculo.findMany({
+      where,
+      include: {
+        portaria: { select: { descricao: true } }
+      },
+      orderBy: {
+        data_hora_leitura: 'desc'
+      },
+      take: 2000
+    });
+
+    const resultado = leituras.map(l => ({
+      ...l,
+      portaria: l.portaria ? l.portaria.descricao : 'Desconhecida',
+      sentido: l.sentido || '-'
+    }));
+
+    return reply.send(resultado);
+  } catch(e) {
+    console.error(e);
+    return reply.status(500).send({ error: 'Erro ao buscar leituras de veículos.' });
+  }
+}

@@ -12,6 +12,7 @@ import userRoutes from './routes/userRoutes.js';
 import portariaRoutes from './routes/portariaRoutes.js';
 import pessoaRoutes from './routes/pessoaRoutes.js';
 import syncRoutes from './routes/syncRoutes.js';
+import veiculoRoutes from './routes/veiculoRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +51,7 @@ fastify.register(userRoutes, { prefix: '/api/users' });
 fastify.register(portariaRoutes, { prefix: '/api/portarias' });
 fastify.register(pessoaRoutes, { prefix: '/api/pessoas' });
 fastify.register(syncRoutes, { prefix: '/api/sync' });
+fastify.register(veiculoRoutes, { prefix: '/api/veiculos' });
 
 // Iniciar o servidor
 const start = async () => {

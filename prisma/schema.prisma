@@ -19,9 +19,10 @@ model Usuario {
 }
 
 model Portaria {
-  id        Int      @id @default(autoincrement())
-  descricao String
-  leituras  LeituraRFID[]
+  id               Int              @id @default(autoincrement())
+  descricao        String
+  leituras         LeituraRFID[]
+  leituras_veiculo LeituraVeiculo[]
 }
 
 model Pessoa {
@@ -52,4 +53,25 @@ model LogOperacao {
   entidade   String
   detalhes   String    @db.Text
   data_hora  DateTime  @default(now())
+}
+
+model Veiculo {
+  id        Int      @id @default(autoincrement())
+  placa     String   @unique
+  descricao String
+}
+
+model LeituraVeiculo {
+  id                      String   @id @default(uuid())
+  placa                   String
+  matricula_condutor      String
+  nome_condutor           String
+  credencial_condutor     String?
+  data_hora_leitura       DateTime
+  id_celular              String
+  situacao                Int      // 0 ou 1
+  data_hora_sincronizacao DateTime @default(now())
+  id_portaria             Int?
+  portaria                Portaria? @relation(fields: [id_portaria], references: [id])
+  sentido                 String?  // 'ENTRADA' ou 'SAIDA'
 }
