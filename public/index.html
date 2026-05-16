@@ -153,10 +153,6 @@
           <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; position: relative;">
               <h3>Leituras RFID</h3>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; position: relative;">
-                <button class="btn excel-btn" onclick="exportLeiturasExcel()" style="background-color: #217346; color: white;"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                <button class="btn pdf-btn" onclick="exportLeiturasPDF()" style="background-color: #e21b1b; color: white;"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-              </div>
             </div>
             
             <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
@@ -183,18 +179,24 @@
             </div>
           </div>
           
-          <div style="display: flex; justify-content: flex-start; padding: 10px 0 5px 0; position: relative;">
-            <button class="btn secondary-btn" onclick="toggleColumnMenu()" style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Configurar Colunas">
-              <i class="fa-solid fa-table-columns"></i>
-            </button>
-            <div id="column-menu" class="column-menu hidden" style="top: 100%; left: 0;">
-              <label><input type="checkbox" checked value="0" onchange="toggleColumn(0)"> Matrícula</label>
-              <label><input type="checkbox" checked value="1" onchange="toggleColumn(1)"> Nome</label>
-              <label><input type="checkbox" checked value="2" onchange="toggleColumn(2)"> Credencial</label>
-              <label><input type="checkbox" checked value="3" onchange="toggleColumn(3)"> Data/Hora Leitura</label>
-              <label><input type="checkbox" checked value="4" onchange="toggleColumn(4)"> Portaria</label>
-              <label><input type="checkbox" checked value="5" onchange="toggleColumn(5)"> Situação</label>
-              <label><input type="checkbox" checked value="6" onchange="toggleColumn(6)"> ID Celular</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0 5px 0; position: relative;">
+            <div style="position: relative;">
+              <button class="btn secondary-btn" onclick="toggleColumnMenu()" style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Configurar Colunas">
+                <i class="fa-solid fa-table-columns"></i>
+              </button>
+              <div id="column-menu" class="column-menu hidden" style="top: 100%; left: 0;">
+                <label><input type="checkbox" checked value="0" onchange="toggleColumn(0)"> Matrícula</label>
+                <label><input type="checkbox" checked value="1" onchange="toggleColumn(1)"> Nome</label>
+                <label><input type="checkbox" checked value="2" onchange="toggleColumn(2)"> Credencial</label>
+                <label><input type="checkbox" checked value="3" onchange="toggleColumn(3)"> Data/Hora Leitura</label>
+                <label><input type="checkbox" checked value="4" onchange="toggleColumn(4)"> Portaria</label>
+                <label><input type="checkbox" checked value="5" onchange="toggleColumn(5)"> Situação</label>
+                <label><input type="checkbox" checked value="6" onchange="toggleColumn(6)"> ID Celular</label>
+              </div>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <button class="btn excel-btn" onclick="exportLeiturasExcel()" style="background-color: #217346; color: white; padding: 5px 10px; font-size: 0.75rem; width: auto; margin: 0;"><i class="fa-solid fa-file-excel"></i> Excel</button>
+              <button class="btn pdf-btn" onclick="exportLeiturasPDF()" style="background-color: #e21b1b; color: white; padding: 5px 10px; font-size: 0.75rem; width: auto; margin: 0;"><i class="fa-solid fa-file-pdf"></i> PDF</button>
             </div>
           </div>
           
@@ -280,10 +282,6 @@
           <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; position: relative;">
               <h3>Leituras de Veículos</h3>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; position: relative;">
-                <button class="btn excel-btn" onclick="exportLeiturasVeiculoExcel()" style="background-color: #217346; color: white;"><i class="fa-solid fa-file-excel"></i> Excel</button>
-                <button class="btn pdf-btn" onclick="exportLeiturasVeiculoPDF()" style="background-color: #e21b1b; color: white;"><i class="fa-solid fa-file-pdf"></i> PDF</button>
-              </div>
             </div>
             
             <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
@@ -307,20 +305,26 @@
             </div>
           </div>
           
-          <div style="display: flex; justify-content: flex-start; padding: 10px 0 5px 0; position: relative;">
-            <button class="btn secondary-btn" onclick="toggleColumnMenuVeiculos()" style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Configurar Colunas">
-              <i class="fa-solid fa-table-columns"></i>
-            </button>
-            <div id="column-menu-veiculos" class="column-menu hidden" style="top: 100%; left: 0;">
-              <label><input type="checkbox" checked value="0" onchange="toggleColumnVeiculos(0)"> Placa</label>
-              <label><input type="checkbox" checked value="1" onchange="toggleColumnVeiculos(1)"> Portaria</label>
-              <label><input type="checkbox" checked value="2" onchange="toggleColumnVeiculos(2)"> Sentido</label>
-              <label><input type="checkbox" checked value="3" onchange="toggleColumnVeiculos(3)"> Matrícula Motorista</label>
-              <label><input type="checkbox" checked value="4" onchange="toggleColumnVeiculos(4)"> Nome Motorista</label>
-              <label><input type="checkbox" checked value="5" onchange="toggleColumnVeiculos(5)"> Credencial Motorista</label>
-              <label><input type="checkbox" checked value="6" onchange="toggleColumnVeiculos(6)"> Data/Hora</label>
-              <label><input type="checkbox" checked value="7" onchange="toggleColumnVeiculos(7)"> Situação</label>
-              <label><input type="checkbox" checked value="8" onchange="toggleColumnVeiculos(8)"> ID Celular</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0 5px 0; position: relative;">
+            <div style="position: relative;">
+              <button class="btn secondary-btn" onclick="toggleColumnMenuVeiculos()" style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Configurar Colunas">
+                <i class="fa-solid fa-table-columns"></i>
+              </button>
+              <div id="column-menu-veiculos" class="column-menu hidden" style="top: 100%; left: 0;">
+                <label><input type="checkbox" checked value="0" onchange="toggleColumnVeiculos(0)"> Placa</label>
+                <label><input type="checkbox" checked value="1" onchange="toggleColumnVeiculos(1)"> Portaria</label>
+                <label><input type="checkbox" checked value="2" onchange="toggleColumnVeiculos(2)"> Sentido</label>
+                <label><input type="checkbox" checked value="3" onchange="toggleColumnVeiculos(3)"> Matrícula Motorista</label>
+                <label><input type="checkbox" checked value="4" onchange="toggleColumnVeiculos(4)"> Nome Motorista</label>
+                <label><input type="checkbox" checked value="5" onchange="toggleColumnVeiculos(5)"> Credencial Motorista</label>
+                <label><input type="checkbox" checked value="6" onchange="toggleColumnVeiculos(6)"> Data/Hora</label>
+                <label><input type="checkbox" checked value="7" onchange="toggleColumnVeiculos(7)"> Situação</label>
+                <label><input type="checkbox" checked value="8" onchange="toggleColumnVeiculos(8)"> ID Celular</label>
+              </div>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <button class="btn excel-btn" onclick="exportLeiturasVeiculoExcel()" style="background-color: #217346; color: white; padding: 5px 10px; font-size: 0.75rem; width: auto; margin: 0;"><i class="fa-solid fa-file-excel"></i> Excel</button>
+              <button class="btn pdf-btn" onclick="exportLeiturasVeiculoPDF()" style="background-color: #e21b1b; color: white; padding: 5px 10px; font-size: 0.75rem; width: auto; margin: 0;"><i class="fa-solid fa-file-pdf"></i> PDF</button>
             </div>
           </div>
           
