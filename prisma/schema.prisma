@@ -74,4 +74,5 @@ model LeituraVeiculo {
   id_portaria             Int?
   portaria                Portaria? @relation(fields: [id_portaria], references: [id])
   sentido                 String?  // 'ENTRADA' ou 'SAIDA'
+  is_condutor             Boolean  @default(true)
 }

@@ -150,7 +150,8 @@ export async function syncLeiturasVeiculo(request, reply) {
           id_celular: leitura.id_celular,
           situacao: parseInt(leitura.situacao),
           id_portaria: leitura.id_portaria ? parseInt(leitura.id_portaria) : null,
-          sentido: leitura.sentido || null
+          sentido: leitura.sentido || null,
+          is_condutor: leitura.is_condutor !== undefined ? Boolean(leitura.is_condutor) : true
         }
       });
       count++;

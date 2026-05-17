@@ -502,8 +502,9 @@ async function loadLeiturasVeiculo() {
       <td data-col="4" class="${isHiddenVeiculo(4) ? 'hidden-col' : ''}">${l.nome_condutor || '-'}</td>
       <td data-col="5" class="${isHiddenVeiculo(5) ? 'hidden-col' : ''}">${l.credencial_condutor || '-'}</td>
       <td data-col="6" class="${isHiddenVeiculo(6) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
-      <td data-col="7" class="${isHiddenVeiculo(7) ? 'hidden-col' : ''}"><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
-      <td data-col="8" class="${isHiddenVeiculo(8) ? 'hidden-col' : ''}">${l.id_celular}</td>
+      <td data-col="7" class="${isHiddenVeiculo(7) ? 'hidden-col' : ''}">${l.is_condutor ? 'Sim' : 'Não'}</td>
+      <td data-col="8" class="${isHiddenVeiculo(8) ? 'hidden-col' : ''}"><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
+      <td data-col="9" class="${isHiddenVeiculo(9) ? 'hidden-col' : ''}">${l.id_celular}</td>
     </tr>
   `).join('');
 }
