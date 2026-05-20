@@ -151,7 +151,7 @@ export async function syncLeiturasVeiculo(request, reply) {
           situacao: parseInt(leitura.situacao),
           id_portaria: leitura.id_portaria ? parseInt(leitura.id_portaria) : null,
           sentido: leitura.sentido || null,
-          is_condutor: leitura.is_condutor !== undefined ? Boolean(leitura.is_condutor) : true
+          is_condutor: leitura.is_condutor !== undefined ? (leitura.is_condutor === true || leitura.is_condutor === 'true' || leitura.is_condutor === 1 || leitura.is_condutor === '1') : true
         }
       });
       count++;
