@@ -53,11 +53,16 @@ fastify.register(pessoaRoutes, { prefix: '/api/pessoas' });
 fastify.register(syncRoutes, { prefix: '/api/sync' });
 fastify.register(veiculoRoutes, { prefix: '/api/veiculos' });
 
+import { startAutoSyncScheduler } from './controllers/pessoaController.js';
+
 // Iniciar o servidor
 const start = async () => {
   try {
     await fastify.listen({ port: 3000, host: '0.0.0.0' });
     fastify.log.info(`Servidor rodando em http://localhost:3000`);
+    
+    // Iniciar agendador automático de sincronização (de hora em hora)
+    startAutoSyncScheduler();
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

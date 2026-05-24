@@ -120,6 +120,27 @@ async function loadInitialData() {
       const ac = await resA.json();
       document.getElementById('stat-pessoas').innerText = ac.length;
     }
+
+    // Carregar última data de sincronização no painel
+    const resSync = await fetchAuth('/pessoas/last-sync');
+    if (resSync.ok) {
+      const data = await resSync.json();
+      const display = document.getElementById('last-sync-time-display');
+      if (display) {
+        if (data.lastSync) {
+          const date = new Date(data.lastSync);
+          display.innerText = `Última Atualização: ${date.toLocaleString()}`;
+          display.style.color = '#36BF8D';
+          display.style.background = 'rgba(54, 191, 141, 0.15)';
+          display.style.borderColor = 'rgba(54, 191, 141, 0.3)';
+        } else {
+          display.innerText = 'Última Atualização: Nunca Realizada';
+          display.style.color = '#E74C3C';
+          display.style.background = 'rgba(231, 76, 60, 0.15)';
+          display.style.borderColor = 'rgba(231, 76, 60, 0.3)';
+        }
+      }
+    }
   } catch(e) { console.log(e); }
 }
 
@@ -198,7 +219,12 @@ async function deletePortaria(id) {
   else alert('Erro ao excluir');
 }
 
-// Upload XLS
+// Upload & Auto Sync XLS
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const fileName = e.target.files[0] ? e.target.files[0].name : 'Nenhum arquivo selecionado';
+  document.getElementById('selected-file-name').innerText = fileName;
+});
+
 document.getElementById('upload-btn').addEventListener('click', async () => {
   const fileInput = document.getElementById('file-input');
   const statusDiv = document.getElementById('upload-status');
@@ -207,7 +233,7 @@ document.getElementById('upload-btn').addEventListener('click', async () => {
   const formData = new FormData();
   formData.append('file', fileInput.files[0]);
 
-  statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+  statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando arquivo manual...';
   
   try {
     const res = await fetchAuth('/pessoas/upload', {
@@ -224,6 +250,26 @@ document.getElementById('upload-btn').addEventListener('click', async () => {
     }
   } catch(e) {
     statusDiv.innerHTML = `<span style="color:var(--danger);">Erro de conexão.</span>`;
+  }
+});
+
+document.getElementById('auto-sync-btn').addEventListener('click', async () => {
+  const statusDiv = document.getElementById('upload-status');
+  statusDiv.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Conectando ao portal Dimep, gerando relatório e sincronizando os cadastros... Por favor, aguarde cerca de 15 a 45 segundos.';
+  
+  try {
+    const res = await fetchAuth('/pessoas/auto-sync', {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if(res.ok) {
+      statusDiv.innerHTML = `<span style="color:var(--success);"><i class="fa-solid fa-check"></i> ${data.message}</span>`;
+      loadInitialData();
+    } else {
+      statusDiv.innerHTML = `<span style="color:var(--danger);"><i class="fa-solid fa-xmark"></i> ${data.error || 'Erro na sincronização automática.'}</span>`;
+    }
+  } catch(e) {
+    statusDiv.innerHTML = `<span style="color:var(--danger);">Erro na conexão ou timeout ao tentar sincronizar automaticamente.</span>`;
   }
 });
 

@@ -136,15 +136,40 @@
 
         <!-- Upload Panel -->
         <div id="panel-upload" class="panel">
-          <div class="panel-header">
-            <h3>Upload de Planilha de Pessoas</h3>
+          <div class="panel-header" style="flex-wrap: wrap; gap: 15px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <h3>Sincronização & Upload de Planilha</h3>
+            <span id="last-sync-time-display" style="font-size: 0.85rem; color: #36BF8D; background: rgba(54, 191, 141, 0.15); padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(54, 191, 141, 0.3); font-weight: 600; display: inline-block;">Última Atualização: Carregando...</span>
           </div>
-          <div class="upload-area">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
-            <p>Selecione o arquivo <b>dados_acesso.xls</b></p>
-            <input type="file" id="file-input" accept=".xls,.xlsx" />
-            <button class="btn primary-btn" id="upload-btn">Processar Arquivo</button>
-            <div id="upload-status"></div>
+          
+          <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+            <!-- Opção 1: Automática -->
+            <div class="stat-card" style="flex: 1; min-width: 280px; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 12px; gap: 15px;">
+              <i class="fa-solid fa-arrows-rotate" style="font-size: 3rem; color: #36BF8D;"></i>
+              <h4 style="font-size: 1.2rem; margin: 0; color: #fff;">Sincronização Automática</h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Baixa automaticamente a última versão da planilha de cadastros diretamente do portal da Dimep.</p>
+              <button class="btn primary-btn" id="auto-sync-btn" style="background-color: #36BF8D; margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizar Agora
+              </button>
+            </div>
+
+            <!-- Opção 2: Manual -->
+            <div class="stat-card" style="flex: 1; min-width: 280px; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 12px; gap: 15px;">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 3rem; color: #3269D9;"></i>
+              <h4 style="font-size: 1.2rem; margin: 0; color: #fff;">Importação Manual (XLS)</h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Selecione e envie manualmente o arquivo <b>dados_acesso.xls</b> salvo no seu computador.</p>
+              <input type="file" id="file-input" accept=".xls,.xlsx" style="display: none;" />
+              <button class="btn secondary-btn" onclick="document.getElementById('file-input').click()" style="margin-top: 5px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-file-excel"></i> Selecionar Arquivo
+              </button>
+              <span id="selected-file-name" style="font-size: 0.8rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">Nenhum arquivo selecionado</span>
+              <button class="btn primary-btn" id="upload-btn" style="background-color: #3269D9; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-check"></i> Processar Arquivo
+              </button>
+            </div>
+          </div>
+          
+          <div id="upload-status" style="margin-top: 30px; padding: 15px; border-radius: 8px; text-align: center; font-size: 1rem; min-height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15); border: 1px dashed rgba(255,255,255,0.1);">
+            Aguardando ação...
           </div>
         </div>
 
