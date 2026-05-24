@@ -165,6 +165,14 @@
                 <input type="date" id="leituras-data-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
               </div>
               <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Hora Inicial</label>
+                <input type="time" id="leituras-hora-inicial" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Hora Final</label>
+                <input type="time" id="leituras-hora-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
                 <label style="font-size: 0.8rem; margin-bottom: 3px;">Matrícula</label>
                 <input type="text" id="leituras-matricula" placeholder="Ex: 1234" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 120px;">
               </div>
@@ -285,7 +293,6 @@
             </div>
             
             <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
-
               <div style="display: flex; flex-direction: column;">
                 <label style="font-size: 0.8rem; margin-bottom: 3px;">Data Inicial</label>
                 <input type="date" id="leituras-v-data-inicial" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
@@ -295,8 +302,24 @@
                 <input type="date" id="leituras-v-data-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
               </div>
               <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Hora Inicial</label>
+                <input type="time" id="leituras-v-hora-inicial" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Hora Final</label>
+                <input type="time" id="leituras-v-hora-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
                 <label style="font-size: 0.8rem; margin-bottom: 3px;">Placa</label>
                 <input type="text" id="leituras-v-placa" placeholder="Ex: ABC1234" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 120px;">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Matrícula</label>
+                <input type="text" id="leituras-v-matricula" placeholder="Ex: 1234" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 120px;">
+              </div>
+              <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Nome</label>
+                <input type="text" id="leituras-v-nome" placeholder="Ex: João" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 100%;">
               </div>
               <div style="display: flex; align-items: flex-end; gap: 10px;">
                 <button class="btn primary-btn" onclick="loadLeiturasVeiculo()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>

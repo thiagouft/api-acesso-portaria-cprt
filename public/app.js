@@ -294,12 +294,16 @@ document.getElementById('search-input').addEventListener('keyup', (e) => {
 async function loadLeituras() {
   const dtInicial = document.getElementById('leituras-data-inicial').value;
   const dtFinal = document.getElementById('leituras-data-final').value;
+  const horaInicial = document.getElementById('leituras-hora-inicial').value;
+  const horaFinal = document.getElementById('leituras-hora-final').value;
   const matricula = document.getElementById('leituras-matricula').value;
   const nome = document.getElementById('leituras-nome').value;
 
   const params = new URLSearchParams();
   if (dtInicial) params.append('dataInicial', dtInicial);
   if (dtFinal) params.append('dataFinal', dtFinal);
+  if (horaInicial) params.append('horaInicial', horaInicial);
+  if (horaFinal) params.append('horaFinal', horaFinal);
   if (matricula) params.append('matricula', matricula);
   if (nome) params.append('nome', nome);
 
@@ -334,6 +338,8 @@ async function loadLeituras() {
 function clearLeiturasFilters() {
   document.getElementById('leituras-data-inicial').value = '';
   document.getElementById('leituras-data-final').value = '';
+  document.getElementById('leituras-hora-inicial').value = '';
+  document.getElementById('leituras-hora-final').value = '';
   document.getElementById('leituras-matricula').value = '';
   document.getElementById('leituras-nome').value = '';
   loadLeituras();
@@ -471,12 +477,20 @@ async function deleteVeiculo(id) {
 async function loadLeiturasVeiculo() {
   const dtInicial = document.getElementById('leituras-v-data-inicial').value;
   const dtFinal = document.getElementById('leituras-v-data-final').value;
+  const horaInicial = document.getElementById('leituras-v-hora-inicial').value;
+  const horaFinal = document.getElementById('leituras-v-hora-final').value;
   const placa = document.getElementById('leituras-v-placa').value;
+  const matricula = document.getElementById('leituras-v-matricula').value;
+  const nome = document.getElementById('leituras-v-nome').value;
 
   const params = new URLSearchParams();
   if (dtInicial) params.append('dataInicial', dtInicial);
   if (dtFinal) params.append('dataFinal', dtFinal);
+  if (horaInicial) params.append('horaInicial', horaInicial);
+  if (horaFinal) params.append('horaFinal', horaFinal);
   if (placa) params.append('placa', placa);
+  if (matricula) params.append('matricula', matricula);
+  if (nome) params.append('nome', nome);
 
   const res = await fetchAuth(`/sync/leituras-veiculo?${params.toString()}`);
   const leituras = await res.json();
@@ -540,7 +554,11 @@ document.addEventListener('click', (e) => {
 function clearLeiturasVeiculoFilters() {
   document.getElementById('leituras-v-data-inicial').value = '';
   document.getElementById('leituras-v-data-final').value = '';
+  document.getElementById('leituras-v-hora-inicial').value = '';
+  document.getElementById('leituras-v-hora-final').value = '';
   document.getElementById('leituras-v-placa').value = '';
+  document.getElementById('leituras-v-matricula').value = '';
+  document.getElementById('leituras-v-nome').value = '';
   loadLeiturasVeiculo();
 }
 

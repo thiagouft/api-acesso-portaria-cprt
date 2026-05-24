@@ -38,7 +38,7 @@ export async function syncLeituras(request, reply) {
 }
 
 export async function getLeituras(request, reply) {
-  const { dataInicial, dataFinal, matricula, nome } = request.query;
+  const { dataInicial, dataFinal, matricula, nome, horaInicial, horaFinal } = request.query;
 
   // 1. Fetch all Pessoas for memory mapping
   const todasPessoas = await prisma.pessoa.findMany();
@@ -113,7 +113,7 @@ export async function getLeituras(request, reply) {
   });
 
   // 4. Map Pessoas to Leituras
-  const resultado = leituras.map(l => {
+  let resultado = leituras.map(l => {
     const pessoaInfo = pessoaMap[l.credencial] || { matricula: '-', nome: 'N/A' };
     return {
       ...l,
@@ -121,6 +121,20 @@ export async function getLeituras(request, reply) {
       pessoa_nome: pessoaInfo.nome
     };
   });
+
+  // 5. Filter by hour interval in format hh:mm
+  if (horaInicial || horaFinal) {
+    resultado = resultado.filter(l => {
+      const date = new Date(l.data_hora_leitura);
+      const hh = String(date.getHours()).padStart(2, '0');
+      const mm = String(date.getMinutes()).padStart(2, '0');
+      const timeStr = `${hh}:${mm}`;
+      
+      if (horaInicial && timeStr < horaInicial) return false;
+      if (horaFinal && timeStr > horaFinal) return false;
+      return true;
+    });
+  }
 
   return reply.send(resultado);
 }
@@ -167,13 +181,25 @@ export async function syncLeiturasVeiculo(request, reply) {
 }
 
 export async function getLeiturasVeiculo(request, reply) {
-  const { dataInicial, dataFinal, placa } = request.query;
+  const { dataInicial, dataFinal, placa, matricula, nome, horaInicial, horaFinal } = request.query;
 
   const where = {};
   
   if (placa) {
     where.placa = {
       contains: placa
+    };
+  }
+
+  if (matricula) {
+    where.matricula_condutor = {
+      contains: matricula
+    };
+  }
+
+  if (nome) {
+    where.nome_condutor = {
+      contains: nome
     };
   }
   
@@ -199,11 +225,25 @@ export async function getLeiturasVeiculo(request, reply) {
       take: 2000
     });
 
-    const resultado = leituras.map(l => ({
+    let resultado = leituras.map(l => ({
       ...l,
       portaria: l.portaria ? l.portaria.descricao : 'Desconhecida',
       sentido: l.sentido || '-'
     }));
+
+    // Filter by hour interval in format hh:mm
+    if (horaInicial || horaFinal) {
+      resultado = resultado.filter(l => {
+        const date = new Date(l.data_hora_leitura);
+        const hh = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        const timeStr = `${hh}:${mm}`;
+        
+        if (horaInicial && timeStr < horaInicial) return false;
+        if (horaFinal && timeStr > horaFinal) return false;
+        return true;
+      });
+    }
 
     return reply.send(resultado);
   } catch(e) {
