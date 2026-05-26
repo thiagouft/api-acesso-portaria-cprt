@@ -1,6 +1,7 @@
 const API_URL = '/api';
 let token = localStorage.getItem('cprt_token');
 let userProfile = null;
+let isLoggingOut = false;
 
 // Auth Check on load
 window.onload = () => {
@@ -78,6 +79,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 // Logout
 document.getElementById('logout-btn').addEventListener('click', logout);
 function logout() {
+  isLoggingOut = true;
   localStorage.removeItem('cprt_token');
   window.location.reload();
 }
@@ -88,6 +90,10 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 
 // Fetch Wrapper with Auth
 async function fetchAuth(url, options = {}) {
+  if (isLoggingOut) {
+    return new Response(JSON.stringify({ error: 'Sessão expirada' }), { status: 401 });
+  }
+
   const headers = options.headers || {};
   if (!options.isFormData && options.body) {
     headers['Content-Type'] = 'application/json';
@@ -96,8 +102,11 @@ async function fetchAuth(url, options = {}) {
 
   const res = await fetch(`${API_URL}${url}`, { ...options, headers });
   if (res.status === 401 || res.status === 403) {
-    alert('Sessão expirada ou acesso negado');
-    logout();
+    if (!isLoggingOut) {
+      isLoggingOut = true;
+      alert('Sessão expirada ou acesso negado');
+      logout();
+    }
   }
   return res;
 }
