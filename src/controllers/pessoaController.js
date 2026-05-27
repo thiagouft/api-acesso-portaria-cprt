@@ -173,15 +173,18 @@ export async function runAutoSyncProgrammatically() {
       timeout: 30000,
     });
 
+    const syncUser = process.env.AUTOSYNC_USER || 'mixestec';
+    const syncPass = process.env.AUTOSYNC_PASS || 'Mixestec@123';
+
     console.log('[AUTO-SYNC] Preenchendo usuário...');
     await page.waitForSelector('#txtUsrLogin', { visible: true });
     await page.click('#txtUsrLogin');
-    await page.type('#txtUsrLogin', 'mixestec', { delay: 50 });
+    await page.type('#txtUsrLogin', syncUser, { delay: 50 });
 
     console.log('[AUTO-SYNC] Preenchendo senha...');
     await page.waitForSelector('#txtUserPassLogin', { visible: true });
     await page.click('#txtUserPassLogin');
-    await page.type('#txtUserPassLogin', 'Mixestec@123', { delay: 50 });
+    await page.type('#txtUserPassLogin', syncPass, { delay: 50 });
 
     console.log('[AUTO-SYNC] Clicando em Entrar...');
     await Promise.all([
