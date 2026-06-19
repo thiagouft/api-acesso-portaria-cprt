@@ -32,6 +32,7 @@ model Pessoa {
   situacao                  Int      // 0 = Acesso Bloqueado, 1 = Acesso Permitido
   observacao                String?
   data_ultima_sincronizacao DateTime @default(now())
+  ativo                     Boolean  @default(true)
 }
 
 model LeituraRFID {

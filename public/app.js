@@ -289,13 +289,14 @@ async function loadPessoas(forceRefresh = false) {
   const tbody = document.querySelector('#pessoas-table tbody');
   
   if (globalPessoas.length === 0 || forceRefresh) {
-    const res = await fetchAuth('/pessoas');
+    const res = await fetchAuth('/pessoas?incluirInativos=true');
     globalPessoas = await res.json();
   }
 
   const field = document.getElementById('search-field').value;
   let query = document.getElementById('search-input').value.trim().toLowerCase();
   const statusFilter = document.getElementById('search-status').value;
+  const ativoFilter = document.getElementById('search-ativo').value;
 
   // Se a busca for por matrícula, remove os zeros à esquerda
   if (field === 'matricula') {
@@ -319,6 +320,12 @@ async function loadPessoas(forceRefresh = false) {
     filtered = filtered.filter(p => p.situacao.toString() === statusFilter);
   }
 
+  if (ativoFilter === 'ativos') {
+    filtered = filtered.filter(p => p.ativo === true);
+  } else if (ativoFilter === 'inativos') {
+    filtered = filtered.filter(p => p.ativo === false);
+  }
+
   // Por padrão, mostrar apenas os últimos 10 ou conforme resultado da busca
   const isSearchActive = query.length > 0 || statusFilter !== 'todas';
   const maxToRender = isSearchActive ? filtered.slice(0, 500) : filtered.slice(-10).reverse(); // últimos 10 invertidos se não tiver busca
@@ -328,15 +335,16 @@ async function loadPessoas(forceRefresh = false) {
       <td>${a.matricula}</td>
       <td>${a.nome}</td>
       <td><span class="badge ${a.situacao === 1 ? 'success' : 'danger'}">${a.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
+      <td><span class="badge ${a.ativo ? 'success' : 'secondary'}">${a.ativo ? 'Ativo' : 'Inativo'}</span></td>
       <td>${a.credenciais || '-'}</td>
       <td>${a.observacao || '-'}</td>
     </tr>
   `).join('');
   
   if (!isSearchActive && filtered.length > 10) {
-    tbody.innerHTML += `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Mostrando os últimos 10 de ${filtered.length} registros (Use a busca para ver mais).</td></tr>`;
+    tbody.innerHTML += `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Mostrando os últimos 10 de ${filtered.length} registros (Use a busca para ver mais).</td></tr>`;
   } else if (isSearchActive && filtered.length > 500) {
-    tbody.innerHTML += `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Mostrando 500 de ${filtered.length} resultados encontrados.</td></tr>`;
+    tbody.innerHTML += `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Mostrando 500 de ${filtered.length} resultados encontrados.</td></tr>`;
   }
 }
 

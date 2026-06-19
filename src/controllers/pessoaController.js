@@ -23,6 +23,11 @@ export async function uploadXLS(request, reply) {
     // Pular as primeiras 10 linhas. Range começa do 11 (header) -> dados começam na linha 12
     const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: true });
 
+    // Marcar todas as pessoas cadastradas como inativas antes de processar a nova lista
+    await prisma.pessoa.updateMany({
+      data: { ativo: false }
+    });
+
     let countUpsert = 0;
 
     for (const row of rows) {
@@ -60,7 +65,8 @@ export async function uploadXLS(request, reply) {
           credenciais: credenciais ? credenciais.toString() : null,
           situacao: situacaoInt,
           observacao: observacao ? observacao.toString() : null,
-          data_ultima_sincronizacao: new Date()
+          data_ultima_sincronizacao: new Date(),
+          ativo: true
         },
         create: {
           matricula: matricula.toString(),
@@ -68,7 +74,8 @@ export async function uploadXLS(request, reply) {
           credenciais: credenciais ? credenciais.toString() : null,
           situacao: situacaoInt,
           observacao: observacao ? observacao.toString() : null,
-          data_ultima_sincronizacao: new Date()
+          data_ultima_sincronizacao: new Date(),
+          ativo: true
         }
       });
       countUpsert++;
@@ -84,7 +91,9 @@ export async function uploadXLS(request, reply) {
 }
 
 export async function getPessoas(request, reply) {
-  const pessoas = await prisma.pessoa.findMany();
+  const pessoas = await prisma.pessoa.findMany({
+    where: { ativo: true }
+  });
   return reply.send(pessoas);
 }
 
@@ -223,6 +232,11 @@ export async function runAutoSyncProgrammatically() {
     const sheet = workbook.Sheets[sheetName];
     const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: true });
 
+    // Marcar todas as pessoas cadastradas como inativas antes de processar a nova lista
+    await prisma.pessoa.updateMany({
+      data: { ativo: false }
+    });
+
     let countUpsert = 0;
 
     for (const row of rows) {
@@ -259,7 +273,8 @@ export async function runAutoSyncProgrammatically() {
           credenciais: credenciais ? credenciais.toString() : null,
           situacao: situacaoInt,
           observacao: observacao ? observacao.toString() : null,
-          data_ultima_sincronizacao: new Date()
+          data_ultima_sincronizacao: new Date(),
+          ativo: true
         },
         create: {
           matricula: matricula.toString(),
@@ -267,7 +282,8 @@ export async function runAutoSyncProgrammatically() {
           credenciais: credenciais ? credenciais.toString() : null,
           situacao: situacaoInt,
           observacao: observacao ? observacao.toString() : null,
-          data_ultima_sincronizacao: new Date()
+          data_ultima_sincronizacao: new Date(),
+          ativo: true
         }
       });
       countUpsert++;
