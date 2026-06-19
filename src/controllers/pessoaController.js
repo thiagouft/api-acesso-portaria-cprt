@@ -21,7 +21,7 @@ export async function uploadXLS(request, reply) {
     // Ler a partir da linha 11 (índice 10 no header do xlsx, onde o array começa em 0)
     // O range do xlsx pode ser ajustado, ou podemos pegar os dados formatados
     // Pular as primeiras 10 linhas. Range começa do 11 (header) -> dados começam na linha 12
-    const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: false });
+    const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: true });
 
     let countUpsert = 0;
 
@@ -221,7 +221,7 @@ export async function runAutoSyncProgrammatically() {
     const workbook = xlsx.readFile(downloadedFile);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: false });
+    const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: true });
 
     let countUpsert = 0;
 
