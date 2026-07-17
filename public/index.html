@@ -45,6 +45,7 @@
         <button class="nav-btn" data-target="panel-pessoas"><i class="fa-solid fa-id-card"></i> Pessoas Cadastradas</button>
         <button class="nav-btn" data-target="panel-veiculos"><i class="fa-solid fa-car"></i> Veículos</button>
         <button class="nav-btn" data-target="panel-leituras-veiculos"><i class="fa-solid fa-car-side"></i> Leituras Veículos</button>
+        <button class="nav-btn" data-target="panel-apk"><i class="fa-solid fa-mobile-screen-button"></i> Aplicativo (APK)</button>
       </nav>
       <div class="sidebar-footer">
         <button id="logout-btn" class="nav-btn"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
@@ -368,15 +369,16 @@
               </button>
               <div id="column-menu-veiculos" class="column-menu hidden" style="top: 100%; left: 0;">
                 <label><input type="checkbox" checked value="0" onchange="toggleColumnVeiculos(0)"> Placa</label>
-                <label><input type="checkbox" checked value="1" onchange="toggleColumnVeiculos(1)"> Portaria</label>
-                <label><input type="checkbox" checked value="2" onchange="toggleColumnVeiculos(2)"> Sentido</label>
-                <label><input type="checkbox" checked value="3" onchange="toggleColumnVeiculos(3)"> Matrícula</label>
-                <label><input type="checkbox" checked value="4" onchange="toggleColumnVeiculos(4)"> Nome</label>
-                <label><input type="checkbox" checked value="5" onchange="toggleColumnVeiculos(5)"> Credencial</label>
-                <label><input type="checkbox" checked value="6" onchange="toggleColumnVeiculos(6)"> Data/Hora</label>
-                <label><input type="checkbox" checked value="7" onchange="toggleColumnVeiculos(7)"> Condutor</label>
-                <label><input type="checkbox" checked value="8" onchange="toggleColumnVeiculos(8)"> Situação</label>
-                <label><input type="checkbox" checked value="9" onchange="toggleColumnVeiculos(9)"> ID Celular</label>
+                <label><input type="checkbox" checked value="1" onchange="toggleColumnVeiculos(1)"> Descrição</label>
+                <label><input type="checkbox" checked value="2" onchange="toggleColumnVeiculos(2)"> Portaria</label>
+                <label><input type="checkbox" checked value="3" onchange="toggleColumnVeiculos(3)"> Sentido</label>
+                <label><input type="checkbox" checked value="4" onchange="toggleColumnVeiculos(4)"> Matrícula</label>
+                <label><input type="checkbox" checked value="5" onchange="toggleColumnVeiculos(5)"> Nome</label>
+                <label><input type="checkbox" checked value="6" onchange="toggleColumnVeiculos(6)"> Credencial</label>
+                <label><input type="checkbox" checked value="7" onchange="toggleColumnVeiculos(7)"> Data/Hora</label>
+                <label><input type="checkbox" checked value="8" onchange="toggleColumnVeiculos(8)"> Condutor</label>
+                <label><input type="checkbox" checked value="9" onchange="toggleColumnVeiculos(9)"> Situação</label>
+                <label><input type="checkbox" checked value="10" onchange="toggleColumnVeiculos(10)"> ID Celular</label>
               </div>
             </div>
             <div style="display: flex; gap: 5px;">
@@ -390,19 +392,86 @@
               <thead>
                 <tr>
                   <th data-col="0">Placa</th>
-                  <th data-col="1">Portaria</th>
-                  <th data-col="2">Sentido</th>
-                  <th data-col="3">Matrícula</th>
-                  <th data-col="4">Nome</th>
-                  <th data-col="5">Credencial</th>
-                  <th data-col="6">Data/Hora</th>
-                  <th data-col="7">Condutor</th>
-                  <th data-col="8">Situação</th>
-                  <th data-col="9">ID Celular</th>
+                  <th data-col="1">Descrição</th>
+                  <th data-col="2">Portaria</th>
+                  <th data-col="3">Sentido</th>
+                  <th data-col="4">Matrícula</th>
+                  <th data-col="5">Nome</th>
+                  <th data-col="6">Credencial</th>
+                  <th data-col="7">Data/Hora</th>
+                  <th data-col="8">Condutor</th>
+                  <th data-col="9">Situação</th>
+                  <th data-col="10">ID Celular</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- APK Panel -->
+        <div id="panel-apk" class="panel">
+          <div class="panel-header">
+            <h3>Gerenciar Aplicativo (APK)</h3>
+          </div>
+          
+          <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; width: 100%;">
+            <!-- Card 1: Informações e Link de Compartilhamento -->
+            <div class="stat-card" style="flex: 1.2; min-width: 300px; flex-direction: column; align-items: stretch; padding: 30px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 12px; gap: 20px; display: flex;">
+              <h4 style="font-size: 1.2rem; color: #fff; margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-circle-info" style="color: var(--primary-color);"></i> APK Atual no Servidor
+              </h4>
+              
+              <div style="display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.15); padding: 15px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                  <span style="color: var(--text-muted);">Tamanho:</span>
+                  <strong id="admin-apk-size">-</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                  <span style="color: var(--text-muted);">Último Upload:</span>
+                  <strong id="admin-apk-date">-</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                  <span style="color: var(--text-muted);">Status:</span>
+                  <strong id="admin-apk-status" style="color: var(--danger);">Não disponível</strong>
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.85rem; color: var(--text-muted);">Link Público para Download:</label>
+                <div style="display: flex; gap: 10px;">
+                  <input type="text" id="public-download-link" readonly style="flex: 1; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); font-size: 0.85rem;" />
+                  <button class="btn secondary-btn" id="copy-link-btn" style="width: auto; padding: 0 15px; margin: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
+                    <i class="fa-solid fa-copy"></i> Copiar
+                  </button>
+                </div>
+              </div>
+
+              <a href="/api/apk/download" id="admin-test-download" class="btn secondary-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; text-decoration: none; box-sizing: border-box;">
+                <i class="fa-solid fa-circle-down"></i> Testar Download
+              </a>
+            </div>
+
+            <!-- Card 2: Upload de Nova Versão -->
+            <div class="stat-card" style="flex: 1; min-width: 280px; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 12px; gap: 15px; display: flex;">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 3rem; color: var(--secondary-color);"></i>
+              <h4 style="font-size: 1.2rem; margin: 0; color: #fff;">Enviar Novo APK</h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0; line-height: 1.4;">Selecione uma nova build do aplicativo leitor (formato <b>.apk</b>) para disponibilizar aos agentes.</p>
+              
+              <input type="file" id="apk-file-input" accept=".apk" style="display: none;" />
+              <button class="btn secondary-btn" onclick="document.getElementById('apk-file-input').click()" style="margin-top: 5px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-file-code"></i> Selecionar Arquivo APK
+              </button>
+              <span id="selected-apk-name" style="font-size: 0.8rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;">Nenhum arquivo selecionado</span>
+              
+              <button class="btn primary-btn" id="apk-upload-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-upload"></i> Publicar Aplicativo
+              </button>
+            </div>
+          </div>
+          
+          <div id="apk-upload-status" style="margin-top: 30px; padding: 15px; border-radius: 8px; text-align: center; font-size: 1rem; min-height: 50px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.15); border: 1px dashed rgba(255,255,255,0.1); width: 100%;">
+            Aguardando ação...
           </div>
         </div>
 

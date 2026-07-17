@@ -7,7 +7,7 @@ import puppeteer from 'puppeteer';
 
 export async function uploadXLS(request, reply) {
   const data = await request.file();
-  
+
   if (!data) {
     return reply.status(400).send({ error: 'Nenhum arquivo enviado.' });
   }
@@ -34,7 +34,7 @@ export async function uploadXLS(request, reply) {
       // Normalizar chaves para facilitar a busca, caso tenham espaços
       const normalizeKey = (key) => key.trim().toLowerCase();
       const keys = Object.keys(row);
-      
+
       let matricula, nome, situacaoStr, credenciais, observacao;
 
       for (const key of keys) {
@@ -182,8 +182,12 @@ export async function runAutoSyncProgrammatically() {
       timeout: 30000,
     });
 
-    const syncUser = process.env.AUTOSYNC_USER || 'mixestec';
-    const syncPass = process.env.AUTOSYNC_PASS || 'Mixestec@123';
+    const syncUser = process.env.AUTOSYNC_USER;
+    const syncPass = process.env.AUTOSYNC_PASS;
+
+    if (!syncUser || !syncPass) {
+      throw new Error('Credenciais de sincronização automática (AUTOSYNC_USER/AUTOSYNC_PASS) não configuradas no arquivo .env.');
+    }
 
     console.log('[AUTO-SYNC] Preenchendo usuário...');
     await page.waitForSelector('#txtUsrLogin', { visible: true });
@@ -242,7 +246,7 @@ export async function runAutoSyncProgrammatically() {
     for (const row of rows) {
       const normalizeKey = (key) => key.trim().toLowerCase();
       const keys = Object.keys(row);
-      
+
       let matricula, nome, situacaoStr, credenciais, observacao;
 
       for (const key of keys) {
@@ -326,7 +330,7 @@ export async function runAutoSyncProgrammatically() {
 export function startAutoSyncScheduler() {
   const ONE_HOUR = 60 * 60 * 1000;
   console.log('[SCHEDULER] Iniciando agendador de sincronização de hora em hora...');
-  
+
   // Executa uma vez 5 segundos após a inicialização do servidor para garantir funcionamento imediato
   setTimeout(async () => {
     try {

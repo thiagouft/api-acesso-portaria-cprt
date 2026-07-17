@@ -28,7 +28,7 @@ export async function login(request, reply) {
     login: usuario.login,
     perfil: usuario.perfil,
     nome: usuario.nome
-  }, { expiresIn: '12h' });
+  });
 
   // Log de acesso
   await logOperacao(usuario.id, 'LOGIN', 'Usuario', { login });

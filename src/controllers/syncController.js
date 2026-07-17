@@ -1,6 +1,52 @@
 import prisma from '../prisma.js';
 import { logOperacao } from '../services/logService.js';
 
+const TIMEZONE = 'America/Sao_Paulo';
+
+function parseLocalToUtc(dateStr, timeStr) {
+  const utcDate = new Date(`${dateStr}T${timeStr}Z`);
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hourCycle: 'h23'
+  });
+  const parts = formatter.formatToParts(utcDate);
+  const partsMap = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      partsMap[part.type] = parseInt(part.value, 10);
+    }
+  }
+  const targetDate = Date.UTC(
+    partsMap.year,
+    partsMap.month - 1,
+    partsMap.day,
+    partsMap.hour,
+    partsMap.minute,
+    partsMap.second
+  );
+  const diff = utcDate.getTime() - targetDate;
+  return new Date(utcDate.getTime() + diff);
+}
+
+function getLocalTimeStr(date) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE,
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23'
+  });
+  const parts = formatter.formatToParts(date);
+  const hh = String(parts.find(p => p.type === 'hour').value).padStart(2, '0');
+  const mm = String(parts.find(p => p.type === 'minute').value).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 export async function syncLeituras(request, reply) {
   const { leituras } = request.body;
 
@@ -94,10 +140,10 @@ export async function getLeituras(request, reply) {
   if (dataInicial || dataFinal) {
     where.data_hora_leitura = {};
     if (dataInicial) {
-      where.data_hora_leitura.gte = new Date(dataInicial + 'T00:00:00');
+      where.data_hora_leitura.gte = parseLocalToUtc(dataInicial, '00:00:00');
     }
     if (dataFinal) {
-      where.data_hora_leitura.lte = new Date(dataFinal + 'T23:59:59');
+      where.data_hora_leitura.lte = parseLocalToUtc(dataFinal, '23:59:59');
     }
   }
 
@@ -122,13 +168,10 @@ export async function getLeituras(request, reply) {
     };
   });
 
-  // 5. Filter by hour interval in format hh:mm
+  // 5. Filter by hour interval in format hh:mm (in local timezone)
   if (horaInicial || horaFinal) {
     resultado = resultado.filter(l => {
-      const date = new Date(l.data_hora_leitura);
-      const hh = String(date.getHours()).padStart(2, '0');
-      const mm = String(date.getMinutes()).padStart(2, '0');
-      const timeStr = `${hh}:${mm}`;
+      const timeStr = getLocalTimeStr(l.data_hora_leitura);
       
       if (horaInicial && timeStr < horaInicial) return false;
       if (horaFinal && timeStr > horaFinal) return false;
@@ -206,10 +249,10 @@ export async function getLeiturasVeiculo(request, reply) {
   if (dataInicial || dataFinal) {
     where.data_hora_leitura = {};
     if (dataInicial) {
-      where.data_hora_leitura.gte = new Date(dataInicial + 'T00:00:00');
+      where.data_hora_leitura.gte = parseLocalToUtc(dataInicial, '00:00:00');
     }
     if (dataFinal) {
-      where.data_hora_leitura.lte = new Date(dataFinal + 'T23:59:59');
+      where.data_hora_leitura.lte = parseLocalToUtc(dataFinal, '23:59:59');
     }
   }
 
@@ -225,19 +268,33 @@ export async function getLeiturasVeiculo(request, reply) {
       take: 2000
     });
 
+    if (leituras.length === 0) {
+      return reply.send([]);
+    }
+
+    // Buscar descrições dos veículos cadastrados para relacionar com a placa
+    const veiculos = await prisma.veiculo.findMany({
+      select: {
+        placa: true,
+        descricao: true
+      }
+    });
+
+    const veiculoMap = new Map(
+      veiculos.map(v => [v.placa.trim().toLowerCase(), v.descricao])
+    );
+
     let resultado = leituras.map(l => ({
       ...l,
       portaria: l.portaria ? l.portaria.descricao : 'Desconhecida',
-      sentido: l.sentido || '-'
+      sentido: l.sentido || '-',
+      descricao_veiculo: veiculoMap.get(l.placa.trim().toLowerCase()) || '-'
     }));
 
-    // Filter by hour interval in format hh:mm
+    // Filter by hour interval in format hh:mm (in local timezone)
     if (horaInicial || horaFinal) {
       resultado = resultado.filter(l => {
-        const date = new Date(l.data_hora_leitura);
-        const hh = String(date.getHours()).padStart(2, '0');
-        const mm = String(date.getMinutes()).padStart(2, '0');
-        const timeStr = `${hh}:${mm}`;
+        const timeStr = getLocalTimeStr(l.data_hora_leitura);
         
         if (horaInicial && timeStr < horaInicial) return false;
         if (horaFinal && timeStr > horaFinal) return false;

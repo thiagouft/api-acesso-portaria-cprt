@@ -39,6 +39,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     else if (btn.dataset.target === 'panel-pessoas') loadPessoas();
     else if (btn.dataset.target === 'panel-veiculos') loadVeiculos();
     else if (btn.dataset.target === 'panel-leituras-veiculos') loadLeiturasVeiculo();
+    else if (btn.dataset.target === 'panel-apk') loadAPKInfo();
   });
 });
 
@@ -560,7 +561,7 @@ async function loadLeiturasVeiculo() {
   const tbody = document.querySelector('#leituras-v-table tbody');
   
   if (!leituras || leituras.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Nenhuma leitura encontrada.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Nenhuma leitura encontrada.</td></tr>';
     return;
   }
 
@@ -573,15 +574,16 @@ async function loadLeiturasVeiculo() {
   tbody.innerHTML = leituras.map(l => `
     <tr>
       <td data-col="0" class="${isHiddenVeiculo(0) ? 'hidden-col' : ''}">${l.placa}</td>
-      <td data-col="1" class="${isHiddenVeiculo(1) ? 'hidden-col' : ''}">${l.portaria}</td>
-      <td data-col="2" class="${isHiddenVeiculo(2) ? 'hidden-col' : ''}"><span class="badge ${l.sentido === 'ENTRADA' ? 'success' : l.sentido === 'SAIDA' ? 'danger' : 'secondary'}">${l.sentido}</span></td>
-      <td data-col="3" class="${isHiddenVeiculo(3) ? 'hidden-col' : ''}">${l.matricula_condutor || '-'}</td>
-      <td data-col="4" class="${isHiddenVeiculo(4) ? 'hidden-col' : ''}">${l.nome_condutor || '-'}</td>
-      <td data-col="5" class="${isHiddenVeiculo(5) ? 'hidden-col' : ''}">${l.credencial_condutor || '-'}</td>
-      <td data-col="6" class="${isHiddenVeiculo(6) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
-      <td data-col="7" class="${isHiddenVeiculo(7) ? 'hidden-col' : ''}">${l.is_condutor ? 'Sim' : 'Não'}</td>
-      <td data-col="8" class="${isHiddenVeiculo(8) ? 'hidden-col' : ''}"><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
-      <td data-col="9" class="${isHiddenVeiculo(9) ? 'hidden-col' : ''}">${l.id_celular}</td>
+      <td data-col="1" class="${isHiddenVeiculo(1) ? 'hidden-col' : ''}">${l.descricao_veiculo || '-'}</td>
+      <td data-col="2" class="${isHiddenVeiculo(2) ? 'hidden-col' : ''}">${l.portaria}</td>
+      <td data-col="3" class="${isHiddenVeiculo(3) ? 'hidden-col' : ''}"><span class="badge ${l.sentido === 'ENTRADA' ? 'success' : l.sentido === 'SAIDA' ? 'danger' : 'secondary'}">${l.sentido}</span></td>
+      <td data-col="4" class="${isHiddenVeiculo(4) ? 'hidden-col' : ''}">${l.matricula_condutor || '-'}</td>
+      <td data-col="5" class="${isHiddenVeiculo(5) ? 'hidden-col' : ''}">${l.nome_condutor || '-'}</td>
+      <td data-col="6" class="${isHiddenVeiculo(6) ? 'hidden-col' : ''}">${l.credencial_condutor || '-'}</td>
+      <td data-col="7" class="${isHiddenVeiculo(7) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
+      <td data-col="8" class="${isHiddenVeiculo(8) ? 'hidden-col' : ''}">${l.is_condutor ? 'Sim' : 'Não'}</td>
+      <td data-col="9" class="${isHiddenVeiculo(9) ? 'hidden-col' : ''}"><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
+      <td data-col="10" class="${isHiddenVeiculo(10) ? 'hidden-col' : ''}">${l.id_celular}</td>
     </tr>
   `).join('');
 }
@@ -676,3 +678,132 @@ function exportLeiturasVeiculoPDF() {
 
   doc.save('leituras_veiculos.pdf');
 }
+
+// APK Management
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = 2;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function formatDate(dateString) {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function loadAPKInfo() {
+  const sizeEl = document.getElementById('admin-apk-size');
+  const dateEl = document.getElementById('admin-apk-date');
+  const statusEl = document.getElementById('admin-apk-status');
+  const linkInput = document.getElementById('public-download-link');
+  const testDownloadBtn = document.getElementById('admin-test-download');
+
+  const publicURL = `${window.location.origin}/download.html`;
+  linkInput.value = publicURL;
+
+  try {
+    const response = await fetch('/api/apk/info');
+    const data = await response.json();
+
+    if (response.ok && data.exists) {
+      sizeEl.innerText = formatBytes(data.size);
+      dateEl.innerText = formatDate(data.updatedAt);
+      statusEl.innerText = 'Disponível';
+      statusEl.style.color = 'var(--success)';
+      testDownloadBtn.style.pointerEvents = 'auto';
+      testDownloadBtn.style.opacity = '1';
+    } else {
+      sizeEl.innerText = '-';
+      dateEl.innerText = '-';
+      statusEl.innerText = 'Não disponível';
+      statusEl.style.color = 'var(--danger)';
+      testDownloadBtn.style.pointerEvents = 'none';
+      testDownloadBtn.style.opacity = '0.5';
+    }
+  } catch (error) {
+    console.error('Erro ao carregar informações do APK:', error);
+  }
+}
+
+// Event Listeners para Gerenciamento de APK
+document.addEventListener('DOMContentLoaded', () => {
+  const fileInput = document.getElementById('apk-file-input');
+  const label = document.getElementById('selected-apk-name');
+  const uploadBtn = document.getElementById('apk-upload-btn');
+  const copyBtn = document.getElementById('copy-link-btn');
+
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        label.innerText = file.name;
+        label.style.color = '#fff';
+      } else {
+        label.innerText = 'Nenhum arquivo selecionado';
+        label.style.color = 'var(--text-muted)';
+      }
+    });
+  }
+
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      const statusEl = document.getElementById('apk-upload-status');
+
+      if (!file) {
+        statusEl.innerHTML = '<span style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Por favor, selecione um arquivo APK primeiro.</span>';
+        return;
+      }
+
+      statusEl.innerHTML = '<span style="color: #fff;"><i class="fa-solid fa-spinner fa-spin"></i> Enviando e publicando arquivo APK...</span>';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetchAuth('/apk/upload', {
+          method: 'POST',
+          isFormData: true,
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          statusEl.innerHTML = `<span style="color: var(--success);"><i class="fa-solid fa-circle-check"></i> ${data.message || 'APK publicado com sucesso!'}</span>`;
+          fileInput.value = '';
+          label.innerText = 'Nenhum arquivo selecionado';
+          label.style.color = 'var(--text-muted)';
+          loadAPKInfo();
+        } else {
+          statusEl.innerHTML = `<span style="color: var(--danger);"><i class="fa-solid fa-circle-xmark"></i> ${data.error || 'Erro ao publicar APK.'}</span>`;
+        }
+      } catch (error) {
+        console.error('Erro ao fazer upload do APK:', error);
+        statusEl.innerHTML = '<span style="color: var(--danger);"><i class="fa-solid fa-circle-xmark"></i> Erro de conexão com o servidor.</span>';
+      }
+    });
+  }
+
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const linkInput = document.getElementById('public-download-link');
+      linkInput.select();
+      linkInput.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(linkInput.value);
+
+      const originalHTML = copyBtn.innerHTML;
+      copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copiado!';
+      copyBtn.style.backgroundColor = 'var(--success)';
+      setTimeout(() => {
+        copyBtn.innerHTML = originalHTML;
+        copyBtn.style.backgroundColor = '';
+      }, 2000);
+    });
+  }
+});
+

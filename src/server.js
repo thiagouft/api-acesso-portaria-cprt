@@ -13,6 +13,7 @@ import portariaRoutes from './routes/portariaRoutes.js';
 import pessoaRoutes from './routes/pessoaRoutes.js';
 import syncRoutes from './routes/syncRoutes.js';
 import veiculoRoutes from './routes/veiculoRoutes.js';
+import apkRoutes from './routes/apkRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +24,7 @@ const fastify = Fastify({ logger: true });
 fastify.register(cors, { origin: '*' });
 fastify.register(multipart, {
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB
+    fileSize: 150 * 1024 * 1024 // 150MB
   }
 });
 fastify.register(jwt, {
@@ -52,6 +53,7 @@ fastify.register(portariaRoutes, { prefix: '/api/portarias' });
 fastify.register(pessoaRoutes, { prefix: '/api/pessoas' });
 fastify.register(syncRoutes, { prefix: '/api/sync' });
 fastify.register(veiculoRoutes, { prefix: '/api/veiculos' });
+fastify.register(apkRoutes, { prefix: '/api/apk' });
 
 import { startAutoSyncScheduler } from './controllers/pessoaController.js';
 
