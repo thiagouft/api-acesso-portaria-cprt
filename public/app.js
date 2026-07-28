@@ -283,13 +283,72 @@ document.getElementById('auto-sync-btn').addEventListener('click', async () => {
   }
 });
 
+// Helper universal para paginação numerada (ex: 1 ... 3 4 [5] 6 7 ... 154)
+function renderPaginationControls({ containerId, totalCountId, currentPage, totalRecords, perPage, goToPageFn }) {
+  const totalEl = document.getElementById(totalCountId);
+  const container = document.getElementById(containerId);
+  
+  if (totalEl) {
+    totalEl.innerText = `Total de registros: ${totalRecords.toLocaleString('pt-BR')}`;
+  }
+
+  if (!container) return;
+
+  const totalPages = Math.ceil(totalRecords / perPage) || 1;
+  if (currentPage < 1) currentPage = 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+
+  // Gerar números de página com reticências (...)
+  const pages = [];
+  const delta = 2; // Quantidade de páginas ao redor da atual
+
+  for (let i = 1; i <= totalPages; i++) {
+    if (
+      i === 1 ||
+      i === totalPages ||
+      (i >= currentPage - delta && i <= currentPage + delta)
+    ) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== '...') {
+      pages.push('...');
+    }
+  }
+
+  let html = `<div class="pagination-wrapper">`;
+
+  // Botão Anterior
+  const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+  html += `<button class="page-btn prev-next-btn" ${prevDisabled} onclick="${goToPageFn}(${currentPage - 1})">Anterior</button>`;
+
+  // Botões de Páginas Numeradas
+  pages.forEach(p => {
+    if (p === '...') {
+      html += `<span class="page-ellipsis">...</span>`;
+    } else {
+      const activeClass = p === currentPage ? 'active' : '';
+      html += `<button class="page-btn number-btn ${activeClass}" onclick="${goToPageFn}(${p})">${p}</button>`;
+    }
+  });
+
+  // Botão Próximo
+  const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+  html += `<button class="page-btn prev-next-btn" ${nextDisabled} onclick="${goToPageFn}(${currentPage + 1})">Próximo</button>`;
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
 // Pessoas
 let globalPessoas = [];
+let currentPessoasData = [];
+let currentPessoasPage = 1;
+const PESSOAS_PER_PAGE = 20;
 
 async function loadPessoas(forceRefresh = false) {
   const tbody = document.querySelector('#pessoas-table tbody');
   
   if (globalPessoas.length === 0 || forceRefresh) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-right: 10px; color: var(--primary-color);"></i> Carregando pessoas cadastradas...</td></tr>';
     const res = await fetchAuth('/pessoas?incluirInativos=true');
     globalPessoas = await res.json();
   }
@@ -299,7 +358,6 @@ async function loadPessoas(forceRefresh = false) {
   const statusFilter = document.getElementById('search-status').value;
   const ativoFilter = document.getElementById('search-ativo').value;
 
-  // Se a busca for por matrícula, remove os zeros à esquerda
   if (field === 'matricula') {
     query = query.replace(/^0+/, '');
   }
@@ -311,9 +369,9 @@ async function loadPessoas(forceRefresh = false) {
       let val = p[field] ? p[field].toString().toLowerCase().trim() : '';
       if (field === 'matricula') {
         val = val.replace(/^0+/, '');
-        return val === query; // Busca exata para matrícula
+        return val === query;
       }
-      return val.includes(query); // Busca parcial para nome
+      return val.includes(query);
     });
   }
 
@@ -327,11 +385,36 @@ async function loadPessoas(forceRefresh = false) {
     filtered = filtered.filter(p => p.ativo === false);
   }
 
-  // Por padrão, mostrar apenas os últimos 10 ou conforme resultado da busca
-  const isSearchActive = query.length > 0 || statusFilter !== 'todas';
-  const maxToRender = isSearchActive ? filtered.slice(0, 500) : filtered.slice(-10).reverse(); // últimos 10 invertidos se não tiver busca
+  currentPessoasData = filtered;
+  currentPessoasPage = 1;
+  renderPessoasPage();
+}
 
-  tbody.innerHTML = maxToRender.map(a => `
+function renderPessoasPage() {
+  const totalRecords = currentPessoasData ? currentPessoasData.length : 0;
+  const totalPages = Math.ceil(totalRecords / PESSOAS_PER_PAGE) || 1;
+  if (currentPessoasPage < 1) currentPessoasPage = 1;
+  if (currentPessoasPage > totalPages) currentPessoasPage = totalPages;
+
+  renderPaginationControls({
+    containerId: 'pessoas-pagination',
+    totalCountId: 'pessoas-total-count',
+    currentPage: currentPessoasPage,
+    totalRecords: totalRecords,
+    perPage: PESSOAS_PER_PAGE,
+    goToPageFn: 'goToPessoasPage'
+  });
+
+  const tbody = document.querySelector('#pessoas-table tbody');
+  if (!currentPessoasData || totalRecords === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma pessoa encontrada.</td></tr>';
+    return;
+  }
+
+  const startIndex = (currentPessoasPage - 1) * PESSOAS_PER_PAGE;
+  const pageItems = currentPessoasData.slice(startIndex, startIndex + PESSOAS_PER_PAGE);
+
+  tbody.innerHTML = pageItems.map(a => `
     <tr>
       <td>${a.matricula}</td>
       <td>${a.nome}</td>
@@ -341,12 +424,11 @@ async function loadPessoas(forceRefresh = false) {
       <td>${a.observacao || '-'}</td>
     </tr>
   `).join('');
-  
-  if (!isSearchActive && filtered.length > 10) {
-    tbody.innerHTML += `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Mostrando os últimos 10 de ${filtered.length} registros (Use a busca para ver mais).</td></tr>`;
-  } else if (isSearchActive && filtered.length > 500) {
-    tbody.innerHTML += `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Mostrando 500 de ${filtered.length} resultados encontrados.</td></tr>`;
-  }
+}
+
+function goToPessoasPage(page) {
+  currentPessoasPage = page;
+  renderPessoasPage();
 }
 
 document.getElementById('search-btn').addEventListener('click', () => loadPessoas(false));
@@ -354,8 +436,15 @@ document.getElementById('search-input').addEventListener('keyup', (e) => {
   if (e.key === 'Enter') loadPessoas(false);
 });
 
-// Leituras
+// Leituras RFID
+let currentLeiturasData = [];
+let currentLeiturasPage = 1;
+const LEITURAS_PER_PAGE = 20;
+
 async function loadLeituras() {
+  const tbody = document.querySelector('#leituras-table tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-right: 10px; color: var(--primary-color);"></i> Carregando leituras RFID...</td></tr>';
+
   const dtInicial = document.getElementById('leituras-data-inicial').value;
   const dtFinal = document.getElementById('leituras-data-final').value;
   const horaInicial = document.getElementById('leituras-hora-inicial').value;
@@ -371,22 +460,47 @@ async function loadLeituras() {
   if (matricula) params.append('matricula', matricula);
   if (nome) params.append('nome', nome);
 
-  const res = await fetchAuth(`/sync?${params.toString()}`);
-  const leituras = await res.json();
+  try {
+    const res = await fetchAuth(`/sync?${params.toString()}`);
+    currentLeiturasData = await res.json();
+    currentLeiturasPage = 1;
+    renderLeiturasPage();
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--danger);">Erro ao carregar leituras.</td></tr>';
+  }
+}
+
+function renderLeiturasPage() {
+  const totalRecords = currentLeiturasData ? currentLeiturasData.length : 0;
+  const totalPages = Math.ceil(totalRecords / LEITURAS_PER_PAGE) || 1;
+  if (currentLeiturasPage < 1) currentLeiturasPage = 1;
+  if (currentLeiturasPage > totalPages) currentLeiturasPage = totalPages;
+
+  renderPaginationControls({
+    containerId: 'leituras-pagination',
+    totalCountId: 'leituras-total-count',
+    currentPage: currentLeiturasPage,
+    totalRecords: totalRecords,
+    perPage: LEITURAS_PER_PAGE,
+    goToPageFn: 'goToLeiturasPage'
+  });
+
   const tbody = document.querySelector('#leituras-table tbody');
-  
-  if (!leituras || leituras.length === 0) {
+  if (!currentLeiturasData || totalRecords === 0) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhuma leitura encontrada para os filtros aplicados.</td></tr>';
     return;
   }
 
-  // Verifica estado atual das colunas para manter caso tenha sido alterado
   const isHidden = (colIndex) => {
     const cb = document.querySelector(`#column-menu input[value="${colIndex}"]`);
     return cb && !cb.checked;
   };
 
-  tbody.innerHTML = leituras.map(l => `
+  const startIndex = (currentLeiturasPage - 1) * LEITURAS_PER_PAGE;
+  const pageItems = currentLeiturasData.slice(startIndex, startIndex + LEITURAS_PER_PAGE);
+
+  tbody.innerHTML = pageItems.map(l => `
     <tr>
       <td data-col="0" class="${isHidden(0) ? 'hidden-col' : ''}">${l.pessoa_matricula || '-'}</td>
       <td data-col="1" class="${isHidden(1) ? 'hidden-col' : ''}">${l.pessoa_nome || 'N/A'}</td>
@@ -397,6 +511,11 @@ async function loadLeituras() {
       <td data-col="6" class="${isHidden(6) ? 'hidden-col' : ''}">${l.id_celular}</td>
     </tr>
   `).join('');
+}
+
+function goToLeiturasPage(page) {
+  currentLeiturasPage = page;
+  renderLeiturasPage();
 }
 
 function clearLeiturasFilters() {
@@ -441,47 +560,63 @@ document.addEventListener('click', (e) => {
 
 // Export Excel
 function exportLeiturasExcel() {
-  const table = document.getElementById('leituras-table');
-  if(!table) return;
+  if (!currentLeiturasData || currentLeiturasData.length === 0) return;
 
-  // Criar clone da tabela para remover colunas ocultas
-  const cloneTable = table.cloneNode(true);
-  const hiddenElements = cloneTable.querySelectorAll('.hidden-col');
-  hiddenElements.forEach(el => el.remove());
+  const isHidden = (colIndex) => {
+    const cb = document.querySelector(`#column-menu input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
 
-  const wb = XLSX.utils.table_to_book(cloneTable, {sheet:"Leituras"});
+  const columnsMap = [
+    { index: 0, title: 'Matrícula', key: l => l.pessoa_matricula || '-' },
+    { index: 1, title: 'Nome', key: l => l.pessoa_nome || 'N/A' },
+    { index: 2, title: 'Credencial', key: l => l.credencial },
+    { index: 3, title: 'Data/Hora Leitura', key: l => new Date(l.data_hora_leitura).toLocaleString() },
+    { index: 4, title: 'Portaria', key: l => l.portaria?.descricao || l.id_portaria },
+    { index: 5, title: 'Situação', key: l => l.situacao === 1 ? 'Permitido' : 'Bloqueado' },
+    { index: 6, title: 'ID Celular', key: l => l.id_celular }
+  ];
+
+  const activeColumns = columnsMap.filter(col => !isHidden(col.index));
+
+  const exportData = currentLeiturasData.map(l => {
+    const row = {};
+    activeColumns.forEach(col => {
+      row[col.title] = col.key(l);
+    });
+    return row;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Leituras RFID");
   XLSX.writeFile(wb, 'leituras_rfid.xlsx');
 }
 
 // Export PDF
 function exportLeiturasPDF() {
+  if (!currentLeiturasData || currentLeiturasData.length === 0) return;
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF('l', 'pt', 'a4'); // Paisagem
+  const doc = new jsPDF('l', 'pt', 'a4');
 
-  const table = document.getElementById('leituras-table');
-  if(!table) return;
+  const isHidden = (colIndex) => {
+    const cb = document.querySelector(`#column-menu input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
 
-  // Extrair cabeçalhos (apenas visíveis)
-  const headers = [];
-  table.querySelectorAll('thead th').forEach(th => {
-    if (!th.classList.contains('hidden-col')) {
-      headers.push(th.innerText);
-    }
-  });
+  const columnsMap = [
+    { index: 0, title: 'Matrícula', key: l => l.pessoa_matricula || '-' },
+    { index: 1, title: 'Nome', key: l => l.pessoa_nome || 'N/A' },
+    { index: 2, title: 'Credencial', key: l => l.credencial },
+    { index: 3, title: 'Data/Hora Leitura', key: l => new Date(l.data_hora_leitura).toLocaleString() },
+    { index: 4, title: 'Portaria', key: l => l.portaria?.descricao || l.id_portaria },
+    { index: 5, title: 'Situação', key: l => l.situacao === 1 ? 'Permitido' : 'Bloqueado' },
+    { index: 6, title: 'ID Celular', key: l => l.id_celular }
+  ];
 
-  // Extrair linhas (apenas visíveis)
-  const data = [];
-  table.querySelectorAll('tbody tr').forEach(tr => {
-    if(tr.cells.length === 1 && tr.cells[0].colSpan > 1) return; // Nenhuma leitura
-    
-    const row = [];
-    tr.querySelectorAll('td').forEach(td => {
-      if (!td.classList.contains('hidden-col')) {
-        row.push(td.innerText);
-      }
-    });
-    data.push(row);
-  });
+  const activeColumns = columnsMap.filter(col => !isHidden(col.index));
+  const headers = activeColumns.map(col => col.title);
+  const data = currentLeiturasData.map(l => activeColumns.map(col => col.key(l)));
 
   doc.text("Relatório de Leituras RFID", 40, 40);
   
@@ -497,12 +632,51 @@ function exportLeiturasPDF() {
   doc.save('leituras_rfid.pdf');
 }
 
-// Veiculos
+// Veiculos Cadastrados
+let currentVeiculosCadastroData = [];
+let currentVeiculosCadastroPage = 1;
+const VEICULOS_CADASTRO_PER_PAGE = 20;
+
 async function loadVeiculos() {
-  const res = await fetchAuth('/veiculos');
-  const veiculos = await res.json();
   const tbody = document.querySelector('#veiculos-table tbody');
-  tbody.innerHTML = veiculos.map(v => `
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-right: 10px; color: var(--primary-color);"></i> Carregando veículos...</td></tr>';
+  
+  try {
+    const res = await fetchAuth('/veiculos');
+    currentVeiculosCadastroData = await res.json();
+    currentVeiculosCadastroPage = 1;
+    renderVeiculosCadastroPage();
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger);">Erro ao carregar veículos.</td></tr>';
+  }
+}
+
+function renderVeiculosCadastroPage() {
+  const totalRecords = currentVeiculosCadastroData ? currentVeiculosCadastroData.length : 0;
+  const totalPages = Math.ceil(totalRecords / VEICULOS_CADASTRO_PER_PAGE) || 1;
+  if (currentVeiculosCadastroPage < 1) currentVeiculosCadastroPage = 1;
+  if (currentVeiculosCadastroPage > totalPages) currentVeiculosCadastroPage = totalPages;
+
+  renderPaginationControls({
+    containerId: 'veiculos-pagination',
+    totalCountId: 'veiculos-total-count',
+    currentPage: currentVeiculosCadastroPage,
+    totalRecords: totalRecords,
+    perPage: VEICULOS_CADASTRO_PER_PAGE,
+    goToPageFn: 'goToVeiculosCadastroPage'
+  });
+
+  const tbody = document.querySelector('#veiculos-table tbody');
+  if (!currentVeiculosCadastroData || totalRecords === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum veículo cadastrado.</td></tr>';
+    return;
+  }
+
+  const startIndex = (currentVeiculosCadastroPage - 1) * VEICULOS_CADASTRO_PER_PAGE;
+  const pageItems = currentVeiculosCadastroData.slice(startIndex, startIndex + VEICULOS_CADASTRO_PER_PAGE);
+
+  tbody.innerHTML = pageItems.map(v => `
     <tr>
       <td>${v.id}</td>
       <td>${v.placa}</td>
@@ -510,6 +684,11 @@ async function loadVeiculos() {
       <td><button class="btn secondary-btn" onclick="deleteVeiculo(${v.id})"><i class="fa-solid fa-trash"></i></button></td>
     </tr>
   `).join('');
+}
+
+function goToVeiculosCadastroPage(page) {
+  currentVeiculosCadastroPage = page;
+  renderVeiculosCadastroPage();
 }
 
 document.getElementById('create-veiculo-form').addEventListener('submit', async (e) => {
@@ -537,8 +716,15 @@ async function deleteVeiculo(id) {
   else alert('Erro ao excluir veículo');
 }
 
-// Leituras Veiculo
+// Leituras Veículo
+let currentVeiculosData = [];
+let currentVeiculosPage = 1;
+const VEICULOS_PER_PAGE = 20;
+
 async function loadLeiturasVeiculo() {
+  const tbody = document.querySelector('#leituras-v-table tbody');
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-right: 10px; color: var(--primary-color);"></i> Carregando leituras de veículos...</td></tr>';
+
   const dtInicial = document.getElementById('leituras-v-data-inicial').value;
   const dtFinal = document.getElementById('leituras-v-data-final').value;
   const horaInicial = document.getElementById('leituras-v-hora-inicial').value;
@@ -556,22 +742,48 @@ async function loadLeiturasVeiculo() {
   if (matricula) params.append('matricula', matricula);
   if (nome) params.append('nome', nome);
 
-  const res = await fetchAuth(`/sync/leituras-veiculo?${params.toString()}`);
-  const leituras = await res.json();
+  try {
+    const res = await fetchAuth(`/sync/leituras-veiculo?${params.toString()}`);
+    currentVeiculosData = await res.json();
+    currentVeiculosPage = 1;
+    renderVeiculosPage();
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--danger);">Erro ao carregar leituras.</td></tr>';
+  }
+}
+
+function renderVeiculosPage() {
+  const totalRecords = currentVeiculosData ? currentVeiculosData.length : 0;
+  const totalPages = Math.ceil(totalRecords / VEICULOS_PER_PAGE) || 1;
+
+  if (currentVeiculosPage < 1) currentVeiculosPage = 1;
+  if (currentVeiculosPage > totalPages) currentVeiculosPage = totalPages;
+
+  renderPaginationControls({
+    containerId: 'leituras-v-pagination',
+    totalCountId: 'leituras-v-total-count',
+    currentPage: currentVeiculosPage,
+    totalRecords: totalRecords,
+    perPage: VEICULOS_PER_PAGE,
+    goToPageFn: 'goToVeiculosPage'
+  });
+
   const tbody = document.querySelector('#leituras-v-table tbody');
-  
-  if (!leituras || leituras.length === 0) {
+  if (!currentVeiculosData || totalRecords === 0) {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">Nenhuma leitura encontrada.</td></tr>';
     return;
   }
 
-  // Verifica estado atual das colunas para manter caso tenha sido alterado
   const isHiddenVeiculo = (colIndex) => {
     const cb = document.querySelector(`#column-menu-veiculos input[value="${colIndex}"]`);
     return cb && !cb.checked;
   };
 
-  tbody.innerHTML = leituras.map(l => `
+  const startIndex = (currentVeiculosPage - 1) * VEICULOS_PER_PAGE;
+  const pageItems = currentVeiculosData.slice(startIndex, startIndex + VEICULOS_PER_PAGE);
+
+  tbody.innerHTML = pageItems.map(l => `
     <tr>
       <td data-col="0" class="${isHiddenVeiculo(0) ? 'hidden-col' : ''}">${l.placa}</td>
       <td data-col="1" class="${isHiddenVeiculo(1) ? 'hidden-col' : ''}">${l.descricao_veiculo || '-'}</td>
@@ -586,6 +798,11 @@ async function loadLeiturasVeiculo() {
       <td data-col="10" class="${isHiddenVeiculo(10) ? 'hidden-col' : ''}">${l.id_celular}</td>
     </tr>
   `).join('');
+}
+
+function goToVeiculosPage(page) {
+  currentVeiculosPage = page;
+  renderVeiculosPage();
 }
 
 function toggleColumnMenuVeiculos() {
@@ -628,42 +845,70 @@ function clearLeiturasVeiculoFilters() {
 }
 
 function exportLeiturasVeiculoExcel() {
-  const table = document.getElementById('leituras-v-table');
-  if(!table) return;
+  if (!currentVeiculosData || currentVeiculosData.length === 0) return;
 
-  const cloneTable = table.cloneNode(true);
-  const hiddenElements = cloneTable.querySelectorAll('.hidden-col');
-  hiddenElements.forEach(el => el.remove());
+  const isHiddenVeiculo = (colIndex) => {
+    const cb = document.querySelector(`#column-menu-veiculos input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
 
-  const wb = XLSX.utils.table_to_book(cloneTable, {sheet:"Leituras Veículos"});
+  const columnsMap = [
+    { index: 0, title: 'Placa', key: l => l.placa },
+    { index: 1, title: 'Descrição', key: l => l.descricao_veiculo || '-' },
+    { index: 2, title: 'Portaria', key: l => l.portaria },
+    { index: 3, title: 'Sentido', key: l => l.sentido },
+    { index: 4, title: 'Matrícula', key: l => l.matricula_condutor || '-' },
+    { index: 5, title: 'Nome', key: l => l.nome_condutor || '-' },
+    { index: 6, title: 'Credencial', key: l => l.credencial_condutor || '-' },
+    { index: 7, title: 'Data/Hora', key: l => new Date(l.data_hora_leitura).toLocaleString() },
+    { index: 8, title: 'Condutor', key: l => l.is_condutor ? 'Sim' : 'Não' },
+    { index: 9, title: 'Situação', key: l => l.situacao === 1 ? 'Permitido' : 'Bloqueado' },
+    { index: 10, title: 'ID Celular', key: l => l.id_celular }
+  ];
+
+  const activeColumns = columnsMap.filter(col => !isHiddenVeiculo(col.index));
+
+  const exportData = currentVeiculosData.map(l => {
+    const row = {};
+    activeColumns.forEach(col => {
+      row[col.title] = col.key(l);
+    });
+    return row;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Leituras Veículos");
   XLSX.writeFile(wb, 'leituras_veiculos.xlsx');
 }
 
 function exportLeiturasVeiculoPDF() {
+  if (!currentVeiculosData || currentVeiculosData.length === 0) return;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('l', 'pt', 'a4');
 
-  const table = document.getElementById('leituras-v-table');
-  if(!table) return;
+  const isHiddenVeiculo = (colIndex) => {
+    const cb = document.querySelector(`#column-menu-veiculos input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
 
-  const headers = [];
-  table.querySelectorAll('thead th').forEach(th => {
-    if (!th.classList.contains('hidden-col')) {
-      headers.push(th.innerText);
-    }
-  });
+  const columnsMap = [
+    { index: 0, title: 'Placa', key: l => l.placa },
+    { index: 1, title: 'Descrição', key: l => l.descricao_veiculo || '-' },
+    { index: 2, title: 'Portaria', key: l => l.portaria },
+    { index: 3, title: 'Sentido', key: l => l.sentido },
+    { index: 4, title: 'Matrícula', key: l => l.matricula_condutor || '-' },
+    { index: 5, title: 'Nome', key: l => l.nome_condutor || '-' },
+    { index: 6, title: 'Credencial', key: l => l.credencial_condutor || '-' },
+    { index: 7, title: 'Data/Hora', key: l => new Date(l.data_hora_leitura).toLocaleString() },
+    { index: 8, title: 'Condutor', key: l => l.is_condutor ? 'Sim' : 'Não' },
+    { index: 9, title: 'Situação', key: l => l.situacao === 1 ? 'Permitido' : 'Bloqueado' },
+    { index: 10, title: 'ID Celular', key: l => l.id_celular }
+  ];
 
-  const data = [];
-  table.querySelectorAll('tbody tr').forEach(tr => {
-    if(tr.cells.length === 1 && tr.cells[0].colSpan > 1) return;
-    const row = [];
-    tr.querySelectorAll('td').forEach(td => {
-      if (!td.classList.contains('hidden-col')) {
-        row.push(td.innerText);
-      }
-    });
-    data.push(row);
-  });
+  const activeColumns = columnsMap.filter(col => !isHiddenVeiculo(col.index));
+  const headers = activeColumns.map(col => col.title);
+  const data = currentVeiculosData.map(l => activeColumns.map(col => col.key(l)));
 
   doc.text("Relatório de Leituras de Veículos", 40, 40);
   

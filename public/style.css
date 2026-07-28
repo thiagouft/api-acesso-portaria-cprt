@@ -142,6 +142,7 @@ body {
 #dashboard-screen {
   display: none;
   flex-direction: row;
+  min-height: 100vh;
 }
 #dashboard-screen.active { display: flex; }
 
@@ -151,6 +152,10 @@ body {
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -165,6 +170,7 @@ body {
 .sidebar-nav {
   flex: 1;
   padding: 20px 0;
+  overflow-y: auto;
 }
 
 .nav-btn {
@@ -193,6 +199,7 @@ body {
 
 .main-content {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -213,7 +220,7 @@ body {
   display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
 }
 
-.content-area { padding: 40px; flex: 1; overflow-y: auto; }
+.content-area { padding: 40px; flex: 1; }
 
 .panel { display: none; animation: fadeIn 0.4s ease; }
 .panel.active { display: block; }
@@ -381,4 +388,75 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 .pdf-btn:hover {
   background: #b71c1c;
+}
+
+/* Numbered Pagination Styling */
+.pagination-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  gap: 10px;
+}
+
+.pagination-total-count {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.page-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  color: #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  min-width: 38px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-btn:hover:not(:disabled):not(.active) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.page-btn.active {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-ellipsis {
+  color: #94a3b8;
+  padding: 0 4px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  user-select: none;
 }

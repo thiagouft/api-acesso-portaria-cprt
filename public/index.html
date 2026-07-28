@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel de Controle - Acesso CPRT</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=1.0.4">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -250,6 +250,16 @@
               <tbody></tbody>
             </table>
           </div>
+
+          <!-- Pagination for Leituras RFID -->
+          <div id="leituras-pagination" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 15px; gap: 6px; font-size: 0.95rem; color: var(--text-main);">
+            <div id="leituras-total-count" style="font-weight: 700; font-size: 1rem; color: #fff;">Total de registros: 0</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn secondary-btn" onclick="changeLeiturasPage(-1)" id="btn-rfid-prev" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Página Anterior"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+              <span id="leituras-page-info" style="font-weight: 500;">Página 1 de 1</span>
+              <button class="btn secondary-btn" onclick="changeLeiturasPage(1)" id="btn-rfid-next" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Próxima Página">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
         </div>
 
         <!-- Pessoas Panel -->
@@ -296,6 +306,16 @@
               <tbody></tbody>
             </table>
           </div>
+
+          <!-- Pagination for Pessoas -->
+          <div id="pessoas-pagination" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 15px; gap: 6px; font-size: 0.95rem; color: var(--text-main);">
+            <div id="pessoas-total-count" style="font-weight: 700; font-size: 1rem; color: #fff;">Total de registros: 0</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn secondary-btn" onclick="changePessoasPage(-1)" id="btn-p-prev" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Página Anterior"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+              <span id="pessoas-page-info" style="font-weight: 500;">Página 1 de 1</span>
+              <button class="btn secondary-btn" onclick="changePessoasPage(1)" id="btn-p-next" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Próxima Página">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
         </div>
 
         <!-- Veiculos Panel -->
@@ -316,6 +336,16 @@
               </thead>
               <tbody></tbody>
             </table>
+          </div>
+
+          <!-- Pagination for Veículos -->
+          <div id="veiculos-pagination" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 15px; gap: 6px; font-size: 0.95rem; color: var(--text-main);">
+            <div id="veiculos-total-count" style="font-weight: 700; font-size: 1rem; color: #fff;">Total de registros: 0</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn secondary-btn" onclick="changeVeiculosCadastroPage(-1)" id="btn-vcad-prev" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Página Anterior"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+              <span id="veiculos-page-info" style="font-weight: 500;">Página 1 de 1</span>
+              <button class="btn secondary-btn" onclick="changeVeiculosCadastroPage(1)" id="btn-vcad-next" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Próxima Página">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
           </div>
         </div>
 
@@ -406,6 +436,16 @@
               </thead>
               <tbody></tbody>
             </table>
+          </div>
+
+          <!-- Pagination for Leituras Veículos -->
+          <div id="leituras-v-pagination" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 15px; gap: 6px; font-size: 0.95rem; color: var(--text-main);">
+            <div id="leituras-v-total-count" style="font-weight: 700; font-size: 1rem; color: #fff;">Total de registros: 0</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn secondary-btn" onclick="changeVeiculosPage(-1)" id="btn-v-prev" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Página Anterior"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+              <span id="leituras-v-page-info" style="font-weight: 500;">Página 1 de 1</span>
+              <button class="btn secondary-btn" onclick="changeVeiculosPage(1)" id="btn-v-next" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Próxima Página">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
           </div>
         </div>
 
@@ -539,6 +579,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   
-  <script src="app.js"></script>
+  <script src="app.js?v=1.0.4"></script>
 </body>
 </html>

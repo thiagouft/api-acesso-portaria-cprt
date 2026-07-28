@@ -147,16 +147,23 @@ export async function getLeituras(request, reply) {
     }
   }
 
-  const leituras = await prisma.leituraRFID.findMany({
+  const hasFilter = Boolean(dataInicial || dataFinal || matricula || nome || horaInicial || horaFinal);
+
+  const queryOptions = {
     where,
     include: {
       portaria: true
     },
     orderBy: {
       data_hora_leitura: 'desc'
-    },
-    take: 2000
-  });
+    }
+  };
+
+  if (!hasFilter) {
+    queryOptions.take = 2000;
+  }
+
+  const leituras = await prisma.leituraRFID.findMany(queryOptions);
 
   // 4. Map Pessoas to Leituras
   let resultado = leituras.map(l => {
@@ -256,17 +263,24 @@ export async function getLeiturasVeiculo(request, reply) {
     }
   }
 
+  const hasFilter = Boolean(dataInicial || dataFinal || placa || matricula || nome || horaInicial || horaFinal);
+
   try {
-    const leituras = await prisma.leituraVeiculo.findMany({
+    const queryOptions = {
       where,
       include: {
         portaria: { select: { descricao: true } }
       },
       orderBy: {
         data_hora_leitura: 'desc'
-      },
-      take: 2000
-    });
+      }
+    };
+
+    if (!hasFilter) {
+      queryOptions.take = 2000;
+    }
+
+    const leituras = await prisma.leituraVeiculo.findMany(queryOptions);
 
     if (leituras.length === 0) {
       return reply.send([]);

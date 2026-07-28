@@ -91,8 +91,11 @@ export async function uploadXLS(request, reply) {
 }
 
 export async function getPessoas(request, reply) {
+  const { incluirInativos } = request.query || {};
+  const whereClause = incluirInativos === 'true' ? {} : { ativo: true };
+  
   const pessoas = await prisma.pessoa.findMany({
-    where: { ativo: true }
+    where: whereClause
   });
   return reply.send(pessoas);
 }
