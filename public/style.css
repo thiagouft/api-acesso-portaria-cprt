@@ -159,7 +159,8 @@ body {
 }
 
 .sidebar-header {
-  padding: 30px 20px;
+  height: 80px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   gap: 15px;
@@ -171,6 +172,11 @@ body {
   flex: 1;
   padding: 20px 0;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE/Edge */
+}
+.sidebar-nav::-webkit-scrollbar {
+  display: none; /* Safari/Chrome */
 }
 
 .nav-btn {
@@ -205,7 +211,8 @@ body {
 }
 
 .top-header {
-  padding: 20px 40px;
+  height: 80px;
+  padding: 0 40px;
   background: var(--panel-bg);
   border-bottom: 1px solid var(--border-color);
   display: flex;
@@ -459,4 +466,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: 600;
   font-size: 0.95rem;
   user-select: none;
+}
+
+/* Fix option contrast in all browsers */
+select option {
+  background-color: #1e293b;
+  color: var(--text-main);
 }

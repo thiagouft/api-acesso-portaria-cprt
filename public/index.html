@@ -200,16 +200,30 @@
                 <input type="time" id="leituras-hora-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
               </div>
               <div style="display: flex; flex-direction: column;">
-                <label style="font-size: 0.8rem; margin-bottom: 3px;">Matrícula</label>
-                <input type="text" id="leituras-matricula" placeholder="Ex: 1234" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 120px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Tipo</label>
+                <select id="leituras-tipo" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 110px;">
+                  <option value="">Todos</option>
+                  <option value="PESSOA">Pessoas</option>
+                  <option value="VISITANTE">Visitantes</option>
+                </select>
               </div>
-              <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
-                <label style="font-size: 0.8rem; margin-bottom: 3px;">Nome</label>
-                <input type="text" id="leituras-nome" placeholder="Ex: João" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 100%;">
+              <div style="display: flex; flex-direction: column; flex: 1; min-width: 250px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Buscar por</label>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                  <select id="leituras-search-field" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 110px;">
+                    <option value="matricula">Matrícula</option>
+                    <option value="nome">Nome</option>
+                    <option value="credencial">Credencial</option>
+                  </select>
+                  <input type="text" id="leituras-search-input" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); flex: 1; width: 100%;">
+                </div>
               </div>
-              <div style="display: flex; align-items: flex-end; gap: 10px;">
-                <button class="btn primary-btn" onclick="loadLeituras()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
-                <button class="btn secondary-btn" onclick="clearLeiturasFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px; visibility: hidden;">Ações</label>
+                <div style="display: flex; gap: 10px;">
+                  <button class="btn primary-btn" onclick="loadLeituras()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                  <button class="btn secondary-btn" onclick="clearLeiturasFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+                </div>
               </div>
             </div>
           </div>
@@ -267,29 +281,44 @@
         <div id="panel-pessoas" class="panel">
           <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
             <h3>Pessoas (XLS)</h3>
-            <div class="search-bar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <select id="search-field" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
-                <option value="matricula">Matrícula</option>
-                <option value="nome">Nome</option>
-              </select>
-              <input type="text" id="search-input" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+            <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
+              <div style="display: flex; flex-direction: column; flex: 1; min-width: 250px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Buscar por</label>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                  <select id="search-field" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 110px;">
+                    <option value="matricula">Matrícula</option>
+                    <option value="nome">Nome</option>
+                    <option value="credenciais">Credencial</option>
+                  </select>
+                  <input type="text" id="search-input" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); flex: 1; width: 100%;">
+                </div>
+              </div>
               
-              <label for="search-status" style="margin-left: 10px;">Situação</label>
-              <select id="search-status" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
-                <option value="todas">Todas</option>
-                <option value="1">Permitido</option>
-                <option value="0">Bloqueado</option>
-              </select>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;" for="search-status">Situação</label>
+                <select id="search-status" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                  <option value="todas">Todas</option>
+                  <option value="1">Permitido</option>
+                  <option value="0">Bloqueado</option>
+                </select>
+              </div>
 
-              <label for="search-ativo" style="margin-left: 10px;">Status</label>
-              <select id="search-ativo" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
-                <option value="todos">Todos</option>
-                <option value="ativos">Ativos</option>
-                <option value="inativos">Inativos</option>
-              </select>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;" for="search-ativo">Status</label>
+                <select id="search-ativo" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                  <option value="todos">Todos</option>
+                  <option value="ativos">Ativos</option>
+                  <option value="inativos">Inativos</option>
+                </select>
+              </div>
               
-              <button class="btn primary-btn" id="search-btn" style="width: auto; padding: 8px 15px;">Buscar</button>
-              <button class="btn secondary-btn" onclick="loadPessoas(true)" style="padding: 8px 15px;"><i class="fa-solid fa-rotate-right"></i></button>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px; visibility: hidden;">Ações</label>
+                <div style="display: flex; gap: 10px;">
+                  <button class="btn primary-btn" id="search-btn" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                  <button class="btn secondary-btn" onclick="clearPessoasFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+                </div>
+              </div>
             </div>
           </div>
           <div class="table-container">
@@ -323,25 +352,37 @@
         <div id="panel-visitantes" class="panel">
           <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
             <h3>Gestão de Visitantes</h3>
-            <div class="search-bar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <input type="text" id="visitantes-search-input" placeholder="Buscar por Nome, CPF ou Empresa..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 260px;">
+            <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
+              <div style="display: flex; flex-direction: column; flex: 1; min-width: 250px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Buscar</label>
+                <input type="text" id="visitantes-search-input" placeholder="Buscar por Nome, CPF ou Empresa..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 100%;">
+              </div>
               
-              <label for="visitantes-search-status">Situação</label>
-              <select id="visitantes-search-status" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
-                <option value="todas">Todas</option>
-                <option value="1">Permitido</option>
-                <option value="0">Bloqueado</option>
-              </select>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;" for="visitantes-search-status">Situação</label>
+                <select id="visitantes-search-status" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                  <option value="todas">Todas</option>
+                  <option value="1">Permitido</option>
+                  <option value="0">Bloqueado</option>
+                </select>
+              </div>
 
-              <label for="visitantes-search-ativo">Status</label>
-              <select id="visitantes-search-ativo" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
-                <option value="todos">Todos</option>
-                <option value="ativos">Ativos</option>
-                <option value="inativos">Inativos</option>
-              </select>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;" for="visitantes-search-ativo">Status</label>
+                <select id="visitantes-search-ativo" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                  <option value="todos">Todos</option>
+                  <option value="ativos">Ativos</option>
+                  <option value="inativos">Inativos</option>
+                </select>
+              </div>
               
-              <button class="btn primary-btn" id="visitantes-search-btn" style="width: auto; padding: 8px 15px;">Buscar</button>
-              <button class="btn secondary-btn" onclick="openVisitanteModal()" style="padding: 8px 15px;"><i class="fa-solid fa-user-plus"></i> Novo Visitante</button>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px; visibility: hidden;">Ações</label>
+                <div style="display: flex; gap: 10px;">
+                  <button class="btn primary-btn" id="visitantes-search-btn" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                  <button class="btn secondary-btn" onclick="openVisitanteModal()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-user-plus"></i> Novo Visitante</button>
+                </div>
+              </div>
             </div>
           </div>
           <div class="table-container">
@@ -376,9 +417,28 @@
 
         <!-- Veiculos Panel -->
         <div id="panel-veiculos" class="panel">
-          <div class="panel-header">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
             <h3>Gerenciar Veículos</h3>
-            <button class="btn secondary-btn" onclick="openModal('veiculo-modal')"><i class="fa-solid fa-plus"></i> Novo Veículo</button>
+            <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
+              <div style="display: flex; flex-direction: column; flex: 1; min-width: 250px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Buscar por</label>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                  <select id="veiculos-search-field" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 110px;">
+                    <option value="placa">Placa</option>
+                    <option value="descricao">Descrição</option>
+                  </select>
+                  <input type="text" id="veiculos-search-input" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); flex: 1; width: 100%;">
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px; visibility: hidden;">Ações</label>
+                <div style="display: flex; gap: 10px;">
+                  <button class="btn primary-btn" id="veiculos-search-btn" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                  <button class="btn secondary-btn" onclick="clearVeiculosCadastroFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+                  <button class="btn secondary-btn" onclick="openModal('veiculo-modal')" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-plus"></i> Novo Veículo</button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="table-container">
             <table id="veiculos-table">
@@ -430,20 +490,31 @@
                 <input type="time" id="leituras-v-hora-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
               </div>
               <div style="display: flex; flex-direction: column;">
-                <label style="font-size: 0.8rem; margin-bottom: 3px;">Placa</label>
-                <input type="text" id="leituras-v-placa" placeholder="Ex: ABC1234" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 120px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Tipo</label>
+                <select id="leituras-v-tipo" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 110px;">
+                  <option value="">Todos</option>
+                  <option value="PESSOA">Pessoas</option>
+                  <option value="VISITANTE">Visitantes</option>
+                </select>
+              </div>
+              <div style="display: flex; flex-direction: column; flex: 1; min-width: 250px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Buscar por</label>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                  <select id="leituras-v-search-field" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 110px;">
+                    <option value="placa">Placa</option>
+                    <option value="matricula">Matrícula</option>
+                    <option value="nome">Nome</option>
+                    <option value="credencial">Credencial</option>
+                  </select>
+                  <input type="text" id="leituras-v-search-input" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); flex: 1; width: 100%;">
+                </div>
               </div>
               <div style="display: flex; flex-direction: column;">
-                <label style="font-size: 0.8rem; margin-bottom: 3px;">Matrícula</label>
-                <input type="text" id="leituras-v-matricula" placeholder="Ex: 1234" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 120px;">
-              </div>
-              <div style="display: flex; flex-direction: column; flex: 1; min-width: 150px;">
-                <label style="font-size: 0.8rem; margin-bottom: 3px;">Nome</label>
-                <input type="text" id="leituras-v-nome" placeholder="Ex: João" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 100%;">
-              </div>
-              <div style="display: flex; align-items: flex-end; gap: 10px;">
-                <button class="btn primary-btn" onclick="loadLeiturasVeiculo()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
-                <button class="btn secondary-btn" onclick="clearLeiturasVeiculoFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+                <label style="font-size: 0.8rem; margin-bottom: 3px; visibility: hidden;">Ações</label>
+                <div style="display: flex; gap: 10px;">
+                  <button class="btn primary-btn" onclick="loadLeiturasVeiculo()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                  <button class="btn secondary-btn" onclick="clearLeiturasVeiculoFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+                </div>
               </div>
             </div>
           </div>
@@ -617,11 +688,12 @@
   <div class="modal-overlay" id="veiculo-modal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Novo Veículo</h3>
+        <h3 id="veiculo-modal-title">Novo Veículo</h3>
         <button class="close-btn" onclick="closeModal('veiculo-modal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
         <form id="create-veiculo-form">
+          <input type="hidden" id="v-id">
           <input type="text" id="v-placa" placeholder="Placa (ex: ABC1234)" required>
           <input type="text" id="v-descricao" placeholder="Descrição do Veículo" required>
           <button type="submit" class="btn primary-btn">Salvar</button>

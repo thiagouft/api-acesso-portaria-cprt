@@ -345,6 +345,14 @@ let currentPessoasData = [];
 let currentPessoasPage = 1;
 const PESSOAS_PER_PAGE = 20;
 
+function clearPessoasFilters() {
+  document.getElementById('search-field').value = 'matricula';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-status').value = 'todas';
+  document.getElementById('search-ativo').value = 'todos';
+  loadPessoas(false);
+}
+
 async function loadPessoas(forceRefresh = false) {
   const tbody = document.querySelector('#pessoas-table tbody');
   
@@ -450,16 +458,17 @@ async function loadLeituras() {
   const dtFinal = document.getElementById('leituras-data-final').value;
   const horaInicial = document.getElementById('leituras-hora-inicial').value;
   const horaFinal = document.getElementById('leituras-hora-final').value;
-  const matricula = document.getElementById('leituras-matricula').value;
-  const nome = document.getElementById('leituras-nome').value;
+  const tipo = document.getElementById('leituras-tipo').value;
+  const searchField = document.getElementById('leituras-search-field').value;
+  const searchInput = document.getElementById('leituras-search-input').value;
 
   const params = new URLSearchParams();
   if (dtInicial) params.append('dataInicial', dtInicial);
   if (dtFinal) params.append('dataFinal', dtFinal);
   if (horaInicial) params.append('horaInicial', horaInicial);
   if (horaFinal) params.append('horaFinal', horaFinal);
-  if (matricula) params.append('matricula', matricula);
-  if (nome) params.append('nome', nome);
+  if (tipo) params.append('tipo', tipo);
+  if (searchInput) params.append(searchField, searchInput);
 
   try {
     const res = await fetchAuth(`/sync?${params.toString()}`);
@@ -524,8 +533,9 @@ function clearLeiturasFilters() {
   document.getElementById('leituras-data-final').value = '';
   document.getElementById('leituras-hora-inicial').value = '';
   document.getElementById('leituras-hora-final').value = '';
-  document.getElementById('leituras-matricula').value = '';
-  document.getElementById('leituras-nome').value = '';
+  document.getElementById('leituras-tipo').value = '';
+  document.getElementById('leituras-search-field').value = 'matricula';
+  document.getElementById('leituras-search-input').value = '';
   loadLeituras();
 }
 
@@ -642,8 +652,17 @@ async function loadVeiculos() {
   const tbody = document.querySelector('#veiculos-table tbody');
   tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-right: 10px; color: var(--primary-color);"></i> Carregando veículos...</td></tr>';
   
+  const searchField = document.getElementById('veiculos-search-field').value;
+  const searchInput = document.getElementById('veiculos-search-input').value;
+
+  const params = new URLSearchParams();
+  if (searchInput) {
+    params.append('searchField', searchField);
+    params.append('searchInput', searchInput);
+  }
+
   try {
-    const res = await fetchAuth('/veiculos');
+    const res = await fetchAuth(`/veiculos?${params.toString()}`);
     currentVeiculosCadastroData = await res.json();
     currentVeiculosCadastroPage = 1;
     renderVeiculosCadastroPage();
@@ -682,7 +701,12 @@ function renderVeiculosCadastroPage() {
       <td>${v.id}</td>
       <td>${v.placa}</td>
       <td>${v.descricao}</td>
-      <td><button class="btn secondary-btn" onclick="deleteVeiculo(${v.id})"><i class="fa-solid fa-trash"></i></button></td>
+      <td>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn secondary-btn" style="padding: 5px 10px; width: auto; margin: 0;" onclick="editVeiculo(${v.id}, '${v.placa}', '${v.descricao.replace(/'/g, "\\'")}')"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn secondary-btn" style="padding: 5px 10px; width: auto; margin: 0;" onclick="deleteVeiculo(${v.id})"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </td>
     </tr>
   `).join('');
 }
@@ -692,21 +716,73 @@ function goToVeiculosCadastroPage(page) {
   renderVeiculosCadastroPage();
 }
 
+function editVeiculo(id, placa, descricao) {
+  document.getElementById('veiculo-modal-title').innerText = 'Editar Veículo';
+  document.getElementById('v-id').value = id;
+  document.getElementById('v-placa').value = placa;
+  document.getElementById('v-placa').disabled = true;
+  document.getElementById('v-descricao').value = descricao;
+  openModal('veiculo-modal');
+}
+
+// Reset modal when closing or opening for new
+const originalOpenModal = openModal;
+openModal = function(id) {
+  if (id === 'veiculo-modal' && !document.getElementById('v-id').value) {
+    document.getElementById('veiculo-modal-title').innerText = 'Novo Veículo';
+    document.getElementById('v-placa').disabled = false;
+    document.getElementById('v-id').value = '';
+    document.getElementById('create-veiculo-form').reset();
+  }
+  originalOpenModal(id);
+};
+
+function clearVeiculosCadastroFilters() {
+  document.getElementById('veiculos-search-field').value = 'placa';
+  document.getElementById('veiculos-search-input').value = '';
+  loadVeiculos();
+}
+
+document.getElementById('veiculos-search-btn').addEventListener('click', () => loadVeiculos());
+document.getElementById('veiculos-search-input').addEventListener('keyup', (e) => {
+  if (e.key === 'Enter') loadVeiculos();
+});
+
 document.getElementById('create-veiculo-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const id = document.getElementById('v-id').value;
   const placaInput = document.getElementById('v-placa').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const body = { 
-    placa: placaInput,
-    descricao: document.getElementById('v-descricao').value 
-  };
-  const res = await fetchAuth('/veiculos', { method: 'POST', body: JSON.stringify(body) });
-  if(res.ok) {
-    closeModal('veiculo-modal');
-    loadVeiculos();
-    document.getElementById('create-veiculo-form').reset();
+  
+  if (id) {
+    // Edit vehicle description
+    const body = {
+      descricao: document.getElementById('v-descricao').value
+    };
+    const res = await fetchAuth(`/veiculos/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    if(res.ok) {
+      closeModal('veiculo-modal');
+      loadVeiculos();
+      document.getElementById('create-veiculo-form').reset();
+      document.getElementById('v-id').value = '';
+    } else {
+      const err = await res.json();
+      alert('Erro: ' + (err.error || 'Não foi possível salvar o veículo.'));
+    }
   } else {
-    const err = await res.json();
-    alert('Erro: ' + (err.error || 'Não foi possível salvar o veículo.'));
+    // Create new vehicle
+    const body = { 
+      placa: placaInput,
+      descricao: document.getElementById('v-descricao').value 
+    };
+    const res = await fetchAuth('/veiculos', { method: 'POST', body: JSON.stringify(body) });
+    if(res.ok) {
+      closeModal('veiculo-modal');
+      loadVeiculos();
+      document.getElementById('create-veiculo-form').reset();
+    } else {
+      const err = await res.json();
+      alert('Erro: ' + (err.error || 'Não foi possível salvar o veículo.'));
+    }
   }
 });
 
@@ -730,18 +806,17 @@ async function loadLeiturasVeiculo() {
   const dtFinal = document.getElementById('leituras-v-data-final').value;
   const horaInicial = document.getElementById('leituras-v-hora-inicial').value;
   const horaFinal = document.getElementById('leituras-v-hora-final').value;
-  const placa = document.getElementById('leituras-v-placa').value;
-  const matricula = document.getElementById('leituras-v-matricula').value;
-  const nome = document.getElementById('leituras-v-nome').value;
+  const tipo = document.getElementById('leituras-v-tipo').value;
+  const searchField = document.getElementById('leituras-v-search-field').value;
+  const searchInput = document.getElementById('leituras-v-search-input').value;
 
   const params = new URLSearchParams();
   if (dtInicial) params.append('dataInicial', dtInicial);
   if (dtFinal) params.append('dataFinal', dtFinal);
   if (horaInicial) params.append('horaInicial', horaInicial);
   if (horaFinal) params.append('horaFinal', horaFinal);
-  if (placa) params.append('placa', placa);
-  if (matricula) params.append('matricula', matricula);
-  if (nome) params.append('nome', nome);
+  if (tipo) params.append('tipo', tipo);
+  if (searchInput) params.append(searchField, searchInput);
 
   try {
     const res = await fetchAuth(`/sync/leituras-veiculo?${params.toString()}`);
@@ -791,7 +866,7 @@ function renderVeiculosPage() {
       <td data-col="2" class="${isHiddenVeiculo(2) ? 'hidden-col' : ''}">${l.portaria}</td>
       <td data-col="3" class="${isHiddenVeiculo(3) ? 'hidden-col' : ''}"><span class="badge ${l.sentido === 'ENTRADA' ? 'success' : l.sentido === 'SAIDA' ? 'danger' : 'secondary'}">${l.sentido}</span></td>
       <td data-col="4" class="${isHiddenVeiculo(4) ? 'hidden-col' : ''}">${l.matricula_condutor || '-'}</td>
-      <td data-col="5" class="${isHiddenVeiculo(5) ? 'hidden-col' : ''}">${l.nome_condutor || '-'}</td>
+      <td data-col="5" class="${isHiddenVeiculo(5) ? 'hidden-col' : ''}">${l.nome_condutor || '-'} ${l.tipo_condutor === 'VISITANTE' ? '<span class="badge info" style="margin-left: 5px; font-size: 0.7rem; background: #0284c7; color: white;">Visitante</span>' : ''}</td>
       <td data-col="6" class="${isHiddenVeiculo(6) ? 'hidden-col' : ''}">${l.credencial_condutor || '-'}</td>
       <td data-col="7" class="${isHiddenVeiculo(7) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
       <td data-col="8" class="${isHiddenVeiculo(8) ? 'hidden-col' : ''}">${l.is_condutor ? 'Sim' : 'Não'}</td>
@@ -839,9 +914,9 @@ function clearLeiturasVeiculoFilters() {
   document.getElementById('leituras-v-data-final').value = '';
   document.getElementById('leituras-v-hora-inicial').value = '';
   document.getElementById('leituras-v-hora-final').value = '';
-  document.getElementById('leituras-v-placa').value = '';
-  document.getElementById('leituras-v-matricula').value = '';
-  document.getElementById('leituras-v-nome').value = '';
+  document.getElementById('leituras-v-tipo').value = '';
+  document.getElementById('leituras-v-search-field').value = 'placa';
+  document.getElementById('leituras-v-search-input').value = '';
   loadLeiturasVeiculo();
 }
 

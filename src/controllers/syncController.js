@@ -84,7 +84,7 @@ export async function syncLeituras(request, reply) {
 }
 
 export async function getLeituras(request, reply) {
-  const { dataInicial, dataFinal, matricula, nome, horaInicial, horaFinal } = request.query;
+  const { dataInicial, dataFinal, matricula, nome, horaInicial, horaFinal, tipo, credencial } = request.query;
 
   // 1. Fetch all Pessoas and Visitantes for memory mapping
   const todasPessoas = await prisma.pessoa.findMany();
@@ -166,8 +166,12 @@ export async function getLeituras(request, reply) {
 
   // 3. Build LeituraRFID query
   const where = {};
+  
   if (credenciaisFiltro) {
     where.credencial = { in: credenciaisFiltro };
+  } else if (credencial) {
+    // Se não passou matricula/nome mas passou credencial solta
+    where.credencial = { contains: credencial };
   }
   
   if (dataInicial || dataFinal) {
@@ -180,7 +184,7 @@ export async function getLeituras(request, reply) {
     }
   }
 
-  const hasFilter = Boolean(dataInicial || dataFinal || matricula || nome || horaInicial || horaFinal);
+  const hasFilter = Boolean(dataInicial || dataFinal || matricula || nome || horaInicial || horaFinal || credencial || tipo);
 
   const queryOptions = {
     where,
@@ -225,7 +229,7 @@ export async function getLeituras(request, reply) {
           candidates.sort((a, b) => new Date(a.data_cadastro) - new Date(b.data_cadastro));
           match = candidates[0];
         }
-        pessoaInfo = { matricula: match.cpf, nome: `${match.nome} (Visitante)`, tipo: 'VISITANTE' };
+        pessoaInfo = { matricula: match.cpf, nome: match.nome, tipo: 'VISITANTE' };
       }
     }
 
@@ -235,7 +239,7 @@ export async function getLeituras(request, reply) {
 
     if (!pessoaInfo && matchesVisitante && matchesVisitante.length > 0) {
       const match = matchesVisitante[0];
-      pessoaInfo = { matricula: match.cpf, nome: `${match.nome} (Visitante)`, tipo: 'VISITANTE' };
+      pessoaInfo = { matricula: match.cpf, nome: match.nome, tipo: 'VISITANTE' };
     }
 
     if (!pessoaInfo) {
@@ -246,9 +250,19 @@ export async function getLeituras(request, reply) {
       ...l,
       pessoa_matricula: pessoaInfo.matricula,
       pessoa_nome: pessoaInfo.nome,
-      pessoa_tipo: pessoaInfo.tipo
+      pessoa_tipo: pessoaInfo.tipo,
+      portaria: l.portaria ? l.portaria.descricao : 'Desconhecida'
     };
   });
+
+  if (tipo) {
+    const tipoUpper = tipo.toUpperCase();
+    if (tipoUpper === 'PESSOA' || tipoUpper === 'FUNCIONARIO') {
+      resultado = resultado.filter(r => r.pessoa_tipo === 'FUNCIONARIO');
+    } else if (tipoUpper === 'VISITANTE') {
+      resultado = resultado.filter(r => r.pessoa_tipo === 'VISITANTE');
+    }
+  }
 
   // 5. Filter by hour interval in format hh:mm (in local timezone)
   if (horaInicial || horaFinal) {
@@ -306,9 +320,15 @@ export async function syncLeiturasVeiculo(request, reply) {
 }
 
 export async function getLeiturasVeiculo(request, reply) {
-  const { dataInicial, dataFinal, placa, matricula, nome, horaInicial, horaFinal } = request.query;
+  const { dataInicial, dataFinal, placa, matricula, nome, horaInicial, horaFinal, tipo, credencial } = request.query;
 
   const where = {};
+  
+  if (credencial) {
+    where.credencial_condutor = {
+      contains: credencial
+    };
+  }
   
   if (placa) {
     where.placa = {
@@ -338,7 +358,7 @@ export async function getLeiturasVeiculo(request, reply) {
     }
   }
 
-  const hasFilter = Boolean(dataInicial || dataFinal || placa || matricula || nome || horaInicial || horaFinal);
+  const hasFilter = Boolean(dataInicial || dataFinal || placa || matricula || nome || horaInicial || horaFinal || credencial || tipo);
 
   try {
     const queryOptions = {
@@ -373,12 +393,34 @@ export async function getLeiturasVeiculo(request, reply) {
       veiculos.map(v => [v.placa.trim().toLowerCase(), v.descricao])
     );
 
-    let resultado = leituras.map(l => ({
-      ...l,
-      portaria: l.portaria ? l.portaria.descricao : 'Desconhecida',
-      sentido: l.sentido || '-',
-      descricao_veiculo: veiculoMap.get(l.placa.trim().toLowerCase()) || '-'
-    }));
+    // Preparar lista de visitantes para poder diferenciar
+    const todosVisitantes = await prisma.visitante.findMany({ select: { cpf: true } });
+    const visitanteCPFs = new Set(todosVisitantes.map(v => v.cpf));
+
+    let resultado = leituras.map(l => {
+      const isVisitante = visitanteCPFs.has(l.matricula_condutor);
+      const nomeCondutorFormatado = l.nome_condutor 
+        ? l.nome_condutor.replace(/\s*\(Visitante\)/gi, '').trim() 
+        : l.nome_condutor;
+
+      return {
+        ...l,
+        tipo_condutor: isVisitante ? 'VISITANTE' : 'FUNCIONARIO',
+        nome_condutor: nomeCondutorFormatado,
+        portaria: l.portaria ? l.portaria.descricao : 'Desconhecida',
+        sentido: l.sentido || '-',
+        descricao_veiculo: veiculoMap.get(l.placa.trim().toLowerCase()) || '-'
+      };
+    });
+
+    if (tipo) {
+      const tipoUpper = tipo.toUpperCase();
+      if (tipoUpper === 'PESSOA' || tipoUpper === 'FUNCIONARIO') {
+        resultado = resultado.filter(r => r.tipo_condutor === 'FUNCIONARIO');
+      } else if (tipoUpper === 'VISITANTE') {
+        resultado = resultado.filter(r => r.tipo_condutor === 'VISITANTE');
+      }
+    }
 
     // Filter by hour interval in format hh:mm (in local timezone)
     if (horaInicial || horaFinal) {

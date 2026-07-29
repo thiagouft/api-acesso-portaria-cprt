@@ -2,8 +2,18 @@ import prisma from '../prisma.js';
 import { logOperacao } from '../services/logService.js';
 
 export async function getVeiculos(request, reply) {
+  const { searchField, searchInput } = request.query;
+
   try {
-    const veiculos = await prisma.veiculo.findMany();
+    const where = {};
+    if (searchField && searchInput) {
+      where[searchField] = { contains: searchInput };
+    }
+
+    const veiculos = await prisma.veiculo.findMany({
+      where,
+      orderBy: { id: 'desc' }
+    });
     return reply.send(veiculos);
   } catch (error) {
     console.error(error);
@@ -37,6 +47,37 @@ export async function createVeiculo(request, reply) {
   } catch (error) {
     console.error(error);
     return reply.status(500).send({ error: 'Erro ao cadastrar veículo.' });
+  }
+}
+
+export async function updateVeiculo(request, reply) {
+  const { id } = request.params;
+  const { descricao } = request.body;
+
+  if (!descricao) {
+    return reply.status(400).send({ error: 'A descrição é obrigatória.' });
+  }
+
+  try {
+    const veiculo = await prisma.veiculo.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!veiculo) {
+      return reply.status(404).send({ error: 'Veículo não encontrado.' });
+    }
+
+    const updatedVeiculo = await prisma.veiculo.update({
+      where: { id: parseInt(id) },
+      data: { descricao }
+    });
+
+    await logOperacao(request.user?.id, 'UPDATE_VEICULO', 'Veiculo', { placa: veiculo.placa, descricao });
+
+    return reply.send(updatedVeiculo);
+  } catch (error) {
+    console.error(error);
+    return reply.status(500).send({ error: 'Erro ao atualizar veículo.' });
   }
 }
 
