@@ -86,15 +86,29 @@ export async function syncLeituras(request, reply) {
 export async function getLeituras(request, reply) {
   const { dataInicial, dataFinal, matricula, nome, horaInicial, horaFinal } = request.query;
 
-  // 1. Fetch all Pessoas for memory mapping
+  // 1. Fetch all Pessoas and Visitantes for memory mapping
   const todasPessoas = await prisma.pessoa.findMany();
+  const todosVisitantes = await prisma.visitante.findMany();
   const pessoaMap = {}; 
   
   for (const p of todasPessoas) {
     if (p.credenciais) {
       const creds = p.credenciais.split(',').map(c => c.trim());
       for (const c of creds) {
-        pessoaMap[c] = { matricula: p.matricula, nome: p.nome };
+        pessoaMap[c] = { matricula: p.matricula, nome: p.nome, tipo: 'FUNCIONARIO' };
+      }
+    }
+  }
+
+  const visitantesPorCredencial = {};
+  for (const v of todosVisitantes) {
+    if (v.credenciais) {
+      const creds = v.credenciais.split(',').map(c => c.trim());
+      for (const c of creds) {
+        if (!visitantesPorCredencial[c]) {
+          visitantesPorCredencial[c] = [];
+        }
+        visitantesPorCredencial[c].push(v);
       }
     }
   }
@@ -122,6 +136,25 @@ export async function getLeituras(request, reply) {
       
       if (match && p.credenciais) {
         const creds = p.credenciais.split(',').map(c => c.trim());
+        credenciaisFiltro.push(...creds);
+      }
+    }
+
+    for (const v of todosVisitantes) {
+      let match = true;
+      if (matQuery && v.cpf.toLowerCase() !== matQuery) match = false;
+      
+      if (nomeQuery) {
+        if (!v.nome) {
+          match = false;
+        } else {
+          const nomeVisitante = removeAcentos(v.nome.toLowerCase());
+          if (!nomeVisitante.includes(nomeQuery)) match = false;
+        }
+      }
+      
+      if (match && v.credenciais) {
+        const creds = v.credenciais.split(',').map(c => c.trim());
         credenciaisFiltro.push(...creds);
       }
     }
@@ -165,13 +198,55 @@ export async function getLeituras(request, reply) {
 
   const leituras = await prisma.leituraRFID.findMany(queryOptions);
 
-  // 4. Map Pessoas to Leituras
+  // 4. Map Pessoas/Visitantes to Leituras
   let resultado = leituras.map(l => {
-    const pessoaInfo = pessoaMap[l.credencial] || { matricula: '-', nome: 'N/A' };
+    let pessoaInfo = null;
+
+    const matchesVisitante = visitantesPorCredencial[l.credencial];
+    if (matchesVisitante) {
+      const dataLeitura = new Date(l.data_hora_leitura);
+      const candidates = matchesVisitante.filter(v => {
+        const inicio = v.data_inicio ? new Date(v.data_inicio) : null;
+        const fim = v.data_fim ? new Date(v.data_fim) : null;
+        
+        const gteInicio = !inicio || dataLeitura >= inicio;
+        const lteFim = !fim || dataLeitura <= fim;
+        
+        return gteInicio && lteFim;
+      });
+
+      if (candidates.length > 0) {
+        const pastCandidates = candidates.filter(v => new Date(v.data_cadastro) <= dataLeitura);
+        let match;
+        if (pastCandidates.length > 0) {
+          pastCandidates.sort((a, b) => new Date(b.data_cadastro) - new Date(a.data_cadastro));
+          match = pastCandidates[0];
+        } else {
+          candidates.sort((a, b) => new Date(a.data_cadastro) - new Date(b.data_cadastro));
+          match = candidates[0];
+        }
+        pessoaInfo = { matricula: match.cpf, nome: `${match.nome} (Visitante)`, tipo: 'VISITANTE' };
+      }
+    }
+
+    if (!pessoaInfo) {
+      pessoaInfo = pessoaMap[l.credencial];
+    }
+
+    if (!pessoaInfo && matchesVisitante && matchesVisitante.length > 0) {
+      const match = matchesVisitante[0];
+      pessoaInfo = { matricula: match.cpf, nome: `${match.nome} (Visitante)`, tipo: 'VISITANTE' };
+    }
+
+    if (!pessoaInfo) {
+      pessoaInfo = { matricula: '-', nome: 'N/A', tipo: 'OUTRO' };
+    }
+
     return {
       ...l,
       pessoa_matricula: pessoaInfo.matricula,
-      pessoa_nome: pessoaInfo.nome
+      pessoa_nome: pessoaInfo.nome,
+      pessoa_tipo: pessoaInfo.tipo
     };
   });
 

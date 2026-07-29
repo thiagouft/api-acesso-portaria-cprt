@@ -97,7 +97,46 @@ export async function getPessoas(request, reply) {
   const pessoas = await prisma.pessoa.findMany({
     where: whereClause
   });
-  return reply.send(pessoas);
+
+  const now = new Date();
+  const whereVisitante = { deleted: false };
+  if (incluirInativos !== 'true') {
+    whereVisitante.ativo = true;
+    whereVisitante.OR = [
+      {
+        AND: [
+          { data_inicio: { lte: now } },
+          { data_fim: { gte: now } }
+        ]
+      },
+      {
+        data_inicio: null,
+        data_fim: null
+      }
+    ];
+  }
+
+  const visitantes = await prisma.visitante.findMany({
+    where: whereVisitante
+  });
+
+  const pessoasFormatadas = pessoas.map(p => ({
+    ...p,
+    tipo: 'FUNCIONARIO'
+  }));
+
+  const visitantesFormatados = visitantes.map(v => ({
+    matricula: v.cpf,
+    nome: v.nome,
+    credenciais: v.credenciais,
+    situacao: v.situacao,
+    observacao: v.observacao ? `[Visitante - ${v.empresa || 'Sem Empresa'}] ${v.observacao}` : `[Visitante - ${v.empresa || 'Sem Empresa'}]`,
+    data_ultima_sincronizacao: v.data_cadastro,
+    ativo: v.ativo,
+    tipo: 'VISITANTE'
+  }));
+
+  return reply.send([...pessoasFormatadas, ...visitantesFormatados]);
 }
 
 export async function autoSyncXLS(request, reply) {

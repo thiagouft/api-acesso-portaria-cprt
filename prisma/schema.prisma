@@ -77,3 +77,19 @@ model LeituraVeiculo {
   sentido                 String?  // 'ENTRADA' ou 'SAIDA'
   is_condutor             Boolean  @default(true)
 }
+
+model Visitante {
+  id            Int       @id @default(autoincrement())
+  cpf           String    @unique
+  nome          String
+  empresa       String?
+  credenciais   String?
+  situacao      Int       @default(1) // 0 = Acesso Bloqueado, 1 = Acesso Permitido
+  observacao    String?
+  data_cadastro DateTime  @default(now())
+  ativo         Boolean   @default(true)
+  data_inicio   DateTime?
+  data_fim      DateTime?
+  deleted       Boolean   @default(false)
+}
+

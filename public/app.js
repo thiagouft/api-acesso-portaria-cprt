@@ -37,6 +37,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     else if (btn.dataset.target === 'panel-portarias') loadPortarias();
     else if (btn.dataset.target === 'panel-leituras') loadLeituras();
     else if (btn.dataset.target === 'panel-pessoas') loadPessoas();
+    else if (btn.dataset.target === 'panel-visitantes') loadVisitantes();
     else if (btn.dataset.target === 'panel-veiculos') loadVeiculos();
     else if (btn.dataset.target === 'panel-leituras-veiculos') loadLeiturasVeiculo();
     else if (btn.dataset.target === 'panel-apk') loadAPKInfo();
@@ -503,7 +504,7 @@ function renderLeiturasPage() {
   tbody.innerHTML = pageItems.map(l => `
     <tr>
       <td data-col="0" class="${isHidden(0) ? 'hidden-col' : ''}">${l.pessoa_matricula || '-'}</td>
-      <td data-col="1" class="${isHidden(1) ? 'hidden-col' : ''}">${l.pessoa_nome || 'N/A'}</td>
+      <td data-col="1" class="${isHidden(1) ? 'hidden-col' : ''}">${l.pessoa_nome || 'N/A'} ${l.pessoa_tipo === 'VISITANTE' ? '<span class="badge info" style="margin-left: 5px; font-size: 0.7rem; background: #0284c7; color: white;">Visitante</span>' : ''}</td>
       <td data-col="2" class="${isHidden(2) ? 'hidden-col' : ''}">${l.credencial}</td>
       <td data-col="3" class="${isHidden(3) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
       <td data-col="4" class="${isHidden(4) ? 'hidden-col' : ''}">${l.portaria?.descricao || l.id_portaria}</td>
@@ -1051,4 +1052,246 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// =====================================
+// Gestão de Visitantes
+// =====================================
+let globalVisitantes = [];
+let currentVisitantesData = [];
+let currentVisitantesPage = 1;
+const VISITANTES_PER_PAGE = 20;
+
+async function loadVisitantes(forceRefresh = false) {
+  const tbody = document.querySelector('#visitantes-table tbody');
+  if (!tbody) return;
+
+  if (globalVisitantes.length === 0 || forceRefresh) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-right: 10px; color: var(--primary-color);"></i> Carregando visitantes...</td></tr>';
+    try {
+      const res = await fetchAuth('/visitantes?incluirInativos=true');
+      globalVisitantes = await res.json();
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger);">Erro ao carregar visitantes.</td></tr>';
+      return;
+    }
+  }
+
+  const query = document.getElementById('visitantes-search-input')?.value.trim().toLowerCase() || '';
+  const statusFilter = document.getElementById('visitantes-search-status')?.value || 'todas';
+  const ativoFilter = document.getElementById('visitantes-search-ativo')?.value || 'todos';
+
+  let filtered = globalVisitantes;
+
+  if (query) {
+    filtered = filtered.filter(v => {
+      const nomeMatch = v.nome ? v.nome.toLowerCase().includes(query) : false;
+      const cpfMatch = v.cpf ? v.cpf.toLowerCase().includes(query) : false;
+      const empresaMatch = v.empresa ? v.empresa.toLowerCase().includes(query) : false;
+      return nomeMatch || cpfMatch || empresaMatch;
+    });
+  }
+
+  if (statusFilter !== 'todas') {
+    filtered = filtered.filter(v => v.situacao.toString() === statusFilter);
+  }
+
+  if (ativoFilter === 'ativos') {
+    filtered = filtered.filter(v => v.ativo === true);
+  } else if (ativoFilter === 'inativos') {
+    filtered = filtered.filter(v => v.ativo === false);
+  }
+
+  currentVisitantesData = filtered;
+  currentVisitantesPage = 1;
+  renderVisitantesPage();
+}
+
+const formatDateLocal = (dateStr) => {
+  if (!dateStr) return '-';
+  const parts = dateStr.substring(0, 10).split('-');
+  if (parts.length !== 3) return '-';
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+};
+
+function renderVisitantesPage() {
+  const totalRecords = currentVisitantesData ? currentVisitantesData.length : 0;
+  const totalPages = Math.ceil(totalRecords / VISITANTES_PER_PAGE) || 1;
+  if (currentVisitantesPage < 1) currentVisitantesPage = 1;
+  if (currentVisitantesPage > totalPages) currentVisitantesPage = totalPages;
+
+  renderPaginationControls({
+    containerId: 'visitantes-pagination',
+    totalCountId: 'visitantes-total-count',
+    currentPage: currentVisitantesPage,
+    totalRecords: totalRecords,
+    perPage: VISITANTES_PER_PAGE,
+    goToPageFn: 'goToVisitantesPage'
+  });
+
+  const tbody = document.querySelector('#visitantes-table tbody');
+  if (!tbody) return;
+
+  if (!currentVisitantesData || totalRecords === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Nenhum visitante encontrado.</td></tr>';
+    return;
+  }
+
+  const startIndex = (currentVisitantesPage - 1) * VISITANTES_PER_PAGE;
+  const pageItems = currentVisitantesData.slice(startIndex, startIndex + VISITANTES_PER_PAGE);
+
+  tbody.innerHTML = pageItems.map(v => `
+    <tr>
+      <td>${v.cpf}</td>
+      <td><strong>${v.nome}</strong></td>
+      <td>${v.empresa || '-'}</td>
+      <td>${v.credenciais || '-'}</td>
+      <td>${formatDateLocal(v.data_inicio)} a ${formatDateLocal(v.data_fim)}</td>
+      <td><span class="badge ${v.situacao === 1 ? 'success' : 'danger'}">${v.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
+      <td><span class="badge ${v.ativo ? 'success' : 'secondary'}">${v.ativo ? 'Ativo' : 'Inativo'}</span></td>
+      <td>${v.observacao || '-'}</td>
+      <td style="display: flex; gap: 6px; justify-content: center;">
+        <button class="btn secondary-btn" style="padding: 4px 8px; font-size: 0.8rem; width: auto;" onclick="openVisitanteModal(${JSON.stringify(v).replace(/"/g, '&quot;')})" title="Editar"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn secondary-btn" style="padding: 4px 8px; font-size: 0.8rem; width: auto;" onclick="toggleVisitanteStatus(${v.id})" title="${v.ativo ? 'Inativar' : 'Ativar'}"><i class="fa-solid ${v.ativo ? 'fa-user-slash' : 'fa-user-check'}"></i></button>
+        <button class="btn danger-btn" style="padding: 4px 8px; font-size: 0.8rem; width: auto; background: var(--danger); color: white;" onclick="deleteVisitanteConfirm(${v.id})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function goToVisitantesPage(page) {
+  currentVisitantesPage = page;
+  renderVisitantesPage();
+}
+
+function changeVisitantesPage(delta) {
+  currentVisitantesPage += delta;
+  renderVisitantesPage();
+}
+
+function openVisitanteModal(visitante = null) {
+  const modalTitle = document.getElementById('visitante-modal-title');
+  const form = document.getElementById('visitante-form');
+  
+  if (visitante) {
+    modalTitle.innerText = 'Editar Visitante';
+    document.getElementById('vis-id').value = visitante.id;
+    document.getElementById('vis-cpf').value = visitante.cpf;
+    document.getElementById('vis-cpf').readOnly = true;
+    document.getElementById('vis-nome').value = visitante.nome;
+    document.getElementById('vis-empresa').value = visitante.empresa || '';
+    document.getElementById('vis-credenciais').value = visitante.credenciais || '';
+    document.getElementById('vis-situacao').value = visitante.situacao;
+    document.getElementById('vis-observacao').value = visitante.observacao || '';
+    document.getElementById('vis-data-inicio').value = visitante.data_inicio ? visitante.data_inicio.substring(0, 10) : '';
+    document.getElementById('vis-data-fim').value = visitante.data_fim ? visitante.data_fim.substring(0, 10) : '';
+  } else {
+    modalTitle.innerText = 'Novo Visitante';
+    form.reset();
+    document.getElementById('vis-id').value = '';
+    document.getElementById('vis-cpf').readOnly = false;
+    document.getElementById('vis-situacao').value = '1';
+    
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const todayLocal = `${year}-${month}-${day}`;
+    document.getElementById('vis-data-inicio').value = todayLocal;
+    document.getElementById('vis-data-fim').value = todayLocal;
+  }
+
+  openModal('visitante-modal');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const visForm = document.getElementById('visitante-form');
+  if (visForm) {
+    visForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('vis-id').value;
+      const cpf = document.getElementById('vis-cpf').value.trim();
+      const nome = document.getElementById('vis-nome').value.trim();
+      const empresa = document.getElementById('vis-empresa').value.trim();
+      const credenciais = document.getElementById('vis-credenciais').value.trim();
+      const situacao = parseInt(document.getElementById('vis-situacao').value);
+      const observacao = document.getElementById('vis-observacao').value.trim();
+      const data_inicio = document.getElementById('vis-data-inicio').value;
+      const data_fim = document.getElementById('vis-data-fim').value;
+
+      const payload = { cpf, nome, empresa, credenciais, situacao, observacao, data_inicio, data_fim };
+
+      try {
+        let res;
+        if (id) {
+          res = await fetchAuth(`/visitantes/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+          });
+        } else {
+          res = await fetchAuth('/visitantes', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+        }
+
+        const data = await res.json();
+
+        if (res.ok) {
+          closeModal('visitante-modal');
+          loadVisitantes(true);
+        } else {
+          alert(data.error || 'Erro ao salvar visitante.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro de conexão ao salvar visitante.');
+      }
+    });
+  }
+
+  const visSearchBtn = document.getElementById('visitantes-search-btn');
+  if (visSearchBtn) {
+    visSearchBtn.addEventListener('click', () => loadVisitantes(false));
+  }
+
+  const visSearchInput = document.getElementById('visitantes-search-input');
+  if (visSearchInput) {
+    visSearchInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') loadVisitantes(false);
+    });
+  }
+});
+
+async function toggleVisitanteStatus(id) {
+  try {
+    const res = await fetchAuth(`/visitantes/${id}/status`, { method: 'PATCH' });
+    if (res.ok) {
+      loadVisitantes(true);
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Erro ao alterar status.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro de conexão.');
+  }
+}
+
+async function deleteVisitanteConfirm(id) {
+  if (!confirm('Tem certeza que deseja excluir permanentemente este visitante?')) return;
+  try {
+    const res = await fetchAuth(`/visitantes/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      loadVisitantes(true);
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Erro ao excluir visitante.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro de conexão.');
+  }
+}
+
 

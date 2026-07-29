@@ -43,6 +43,7 @@
         <button class="nav-btn" data-target="panel-upload"><i class="fa-solid fa-file-excel"></i> Upload XLS</button>
         <button class="nav-btn" data-target="panel-leituras"><i class="fa-solid fa-list-check"></i> Leituras RFID</button>
         <button class="nav-btn" data-target="panel-pessoas"><i class="fa-solid fa-id-card"></i> Pessoas Cadastradas</button>
+        <button class="nav-btn" data-target="panel-visitantes"><i class="fa-solid fa-id-badge"></i> Visitantes</button>
         <button class="nav-btn" data-target="panel-veiculos"><i class="fa-solid fa-car"></i> Veículos</button>
         <button class="nav-btn" data-target="panel-leituras-veiculos"><i class="fa-solid fa-car-side"></i> Leituras Veículos</button>
         <button class="nav-btn" data-target="panel-apk"><i class="fa-solid fa-mobile-screen-button"></i> Aplicativo (APK)</button>
@@ -318,6 +319,61 @@
           </div>
         </div>
 
+        <!-- Visitantes Panel -->
+        <div id="panel-visitantes" class="panel">
+          <div class="panel-header" style="flex-wrap: wrap; gap: 15px;">
+            <h3>Gestão de Visitantes</h3>
+            <div class="search-bar" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <input type="text" id="visitantes-search-input" placeholder="Buscar por Nome, CPF ou Empresa..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 260px;">
+              
+              <label for="visitantes-search-status">Situação</label>
+              <select id="visitantes-search-status" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                <option value="todas">Todas</option>
+                <option value="1">Permitido</option>
+                <option value="0">Bloqueado</option>
+              </select>
+
+              <label for="visitantes-search-ativo">Status</label>
+              <select id="visitantes-search-ativo" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+                <option value="todos">Todos</option>
+                <option value="ativos">Ativos</option>
+                <option value="inativos">Inativos</option>
+              </select>
+              
+              <button class="btn primary-btn" id="visitantes-search-btn" style="width: auto; padding: 8px 15px;">Buscar</button>
+              <button class="btn secondary-btn" onclick="openVisitanteModal()" style="padding: 8px 15px;"><i class="fa-solid fa-user-plus"></i> Novo Visitante</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table id="visitantes-table">
+              <thead>
+                <tr>
+                  <th>CPF (Matrícula)</th>
+                  <th>Nome</th>
+                  <th>Empresa</th>
+                  <th>Credencial</th>
+                  <th>Validade</th>
+                  <th>Situação</th>
+                  <th>Status</th>
+                  <th>Observação</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <!-- Pagination for Visitantes -->
+          <div id="visitantes-pagination" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 15px; gap: 6px; font-size: 0.95rem; color: var(--text-main);">
+            <div id="visitantes-total-count" style="font-weight: 700; font-size: 1rem; color: #fff;">Total de registros: 0</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn secondary-btn" onclick="changeVisitantesPage(-1)" id="btn-vis-prev" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Página Anterior"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+              <span id="visitantes-page-info" style="font-weight: 500;">Página 1 de 1</span>
+              <button class="btn secondary-btn" onclick="changeVisitantesPage(1)" id="btn-vis-next" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Próxima Página">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+
         <!-- Veiculos Panel -->
         <div id="panel-veiculos" class="panel">
           <div class="panel-header">
@@ -573,6 +629,41 @@
       </div>
     </div>
   </div>
+
+  <div class="modal-overlay" id="visitante-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="visitante-modal-title">Novo Visitante</h3>
+        <button class="close-btn" onclick="closeModal('visitante-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="visitante-form">
+          <input type="hidden" id="vis-id">
+          <input type="text" id="vis-cpf" placeholder="CPF do Visitante" required>
+          <input type="text" id="vis-nome" placeholder="Nome Completo" required>
+          <input type="text" id="vis-empresa" placeholder="Empresa / Órgão">
+          <input type="text" id="vis-credenciais" placeholder="Credencial / Tag RFID">
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <div style="flex: 1; display: flex; flex-direction: column;">
+              <label for="vis-data-inicio" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; text-align: left;">Data Início da Visita</label>
+              <input type="date" id="vis-data-inicio" required style="padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column;">
+              <label for="vis-data-fim" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; text-align: left;">Data Fim da Visita</label>
+              <input type="date" id="vis-data-fim" required style="padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+            </div>
+          </div>
+          <select id="vis-situacao">
+            <option value="1">Permitido (Acesso Liberado)</option>
+            <option value="0">Bloqueado (Acesso Negado)</option>
+          </select>
+          <input type="text" id="vis-observacao" placeholder="Observações (opcional)">
+          <button type="submit" class="btn primary-btn">Salvar Visitante</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Bibliotecas de Exportação -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
