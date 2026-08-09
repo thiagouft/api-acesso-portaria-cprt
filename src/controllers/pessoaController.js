@@ -23,11 +23,7 @@ export async function uploadXLS(request, reply) {
     // Pular as primeiras 10 linhas. Range começa do 11 (header) -> dados começam na linha 12
     const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: true });
 
-    // Marcar todas as pessoas cadastradas como inativas antes de processar a nova lista
-    await prisma.pessoa.updateMany({
-      data: { ativo: false }
-    });
-
+    const syncStartTime = new Date(Date.now() - 10000); // 10 segundos de margem de segurança
     let countUpsert = 0;
 
     for (const row of rows) {
@@ -58,27 +54,42 @@ export async function uploadXLS(request, reply) {
         }
       }
 
+      const matStr = matricula.toString().trim();
+
       await prisma.pessoa.upsert({
-        where: { matricula: matricula.toString() },
+        where: { matricula: matStr },
         update: {
-          nome: nome ? nome.toString() : '',
-          credenciais: credenciais ? credenciais.toString() : null,
+          nome: nome ? nome.toString().trim() : '',
+          credenciais: credenciais ? credenciais.toString().trim() : null,
           situacao: situacaoInt,
-          observacao: observacao ? observacao.toString() : null,
+          observacao: observacao ? observacao.toString().trim() : null,
           data_ultima_sincronizacao: new Date(),
           ativo: true
         },
         create: {
-          matricula: matricula.toString(),
-          nome: nome ? nome.toString() : '',
-          credenciais: credenciais ? credenciais.toString() : null,
+          matricula: matStr,
+          nome: nome ? nome.toString().trim() : '',
+          credenciais: credenciais ? credenciais.toString().trim() : null,
           situacao: situacaoInt,
-          observacao: observacao ? observacao.toString() : null,
+          observacao: observacao ? observacao.toString().trim() : null,
           data_ultima_sincronizacao: new Date(),
           ativo: true
         }
       });
       countUpsert++;
+    }
+
+    // Marcar como inativos os registros ausentes na importação (com base no horário de início da sincronização)
+    if (countUpsert > 0) {
+      await prisma.pessoa.updateMany({
+        where: {
+          data_ultima_sincronizacao: {
+            lt: syncStartTime
+          },
+          ativo: true
+        },
+        data: { ativo: false }
+      });
     }
 
     await logOperacao(request.user?.id, 'UPLOAD_XLS', 'Pessoa', { registros_afetados: countUpsert });
@@ -278,11 +289,7 @@ export async function runAutoSyncProgrammatically() {
     const sheet = workbook.Sheets[sheetName];
     const rows = xlsx.utils.sheet_to_json(sheet, { range: 10, raw: true });
 
-    // Marcar todas as pessoas cadastradas como inativas antes de processar a nova lista
-    await prisma.pessoa.updateMany({
-      data: { ativo: false }
-    });
-
+    const syncStartTime = new Date(Date.now() - 10000); // 10 segundos de margem de segurança
     let countUpsert = 0;
 
     for (const row of rows) {
@@ -312,27 +319,42 @@ export async function runAutoSyncProgrammatically() {
         }
       }
 
+      const matStr = matricula.toString().trim();
+
       await prisma.pessoa.upsert({
-        where: { matricula: matricula.toString() },
+        where: { matricula: matStr },
         update: {
-          nome: nome ? nome.toString() : '',
-          credenciais: credenciais ? credenciais.toString() : null,
+          nome: nome ? nome.toString().trim() : '',
+          credenciais: credenciais ? credenciais.toString().trim() : null,
           situacao: situacaoInt,
-          observacao: observacao ? observacao.toString() : null,
+          observacao: observacao ? observacao.toString().trim() : null,
           data_ultima_sincronizacao: new Date(),
           ativo: true
         },
         create: {
-          matricula: matricula.toString(),
-          nome: nome ? nome.toString() : '',
-          credenciais: credenciais ? credenciais.toString() : null,
+          matricula: matStr,
+          nome: nome ? nome.toString().trim() : '',
+          credenciais: credenciais ? credenciais.toString().trim() : null,
           situacao: situacaoInt,
-          observacao: observacao ? observacao.toString() : null,
+          observacao: observacao ? observacao.toString().trim() : null,
           data_ultima_sincronizacao: new Date(),
           ativo: true
         }
       });
       countUpsert++;
+    }
+
+    // Marcar como inativos os registros ausentes na sincronização (com base no horário de início da sincronização)
+    if (countUpsert > 0) {
+      await prisma.pessoa.updateMany({
+        where: {
+          data_ultima_sincronizacao: {
+            lt: syncStartTime
+          },
+          ativo: true
+        },
+        data: { ativo: false }
+      });
     }
 
     // Limpar arquivo baixado
