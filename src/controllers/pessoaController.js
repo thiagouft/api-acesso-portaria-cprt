@@ -218,7 +218,13 @@ export async function runAutoSyncProgrammatically() {
     console.log('[AUTO-SYNC] Iniciando sincronização programada...');
     browser = await puppeteer.launch({
       headless: true, // headless para rodar em background no servidor
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+      ],
     });
 
     const page = await browser.newPage();
