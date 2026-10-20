@@ -33,12 +33,40 @@ export async function login(request, reply) {
   // Log de acesso
   await logOperacao(usuario.id, 'LOGIN', 'Usuario', { login });
 
+  const isPerfilRefeicao = usuario.perfil === 'REFEICAO' || usuario.perfil === 'REFEICAO_MULTI';
+  let refeitorios = [];
+  if (usuario.perfil === 'MASTER') {
+    refeitorios = await prisma.refeitorio.findMany({
+      where: { ativo: true },
+      orderBy: { descricao: 'asc' },
+      select: { id: true, descricao: true, ativo: true }
+    });
+  } else if (isPerfilRefeicao) {
+    const userRefeitorios = await prisma.usuarioRefeitorio.findMany({
+      where: {
+        id_usuario: usuario.id,
+        refeitorio: { ativo: true }
+      },
+      include: {
+        refeitorio: {
+          select: { id: true, descricao: true, ativo: true }
+        }
+      },
+      orderBy: {
+        refeitorio: { descricao: 'asc' }
+      }
+    });
+    refeitorios = userRefeitorios.map(ur => ur.refeitorio);
+  }
+
   return reply.send({
     token,
     usuario: {
       id: usuario.id,
       nome: usuario.nome,
-      perfil: usuario.perfil
-    }
+      perfil: usuario.perfil,
+      podeSelecionarMultiplosRefeitorios: usuario.perfil === 'REFEICAO_MULTI' || usuario.perfil === 'MASTER'
+    },
+    refeitorios
   });
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel de Controle - Acesso CPRT</title>
-  <link rel="stylesheet" href="style.css?v=1.0.4">
+  <link rel="stylesheet" href="style.css?v=1.0.8">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -27,6 +27,20 @@
         <button type="submit" class="btn primary-btn">Entrar</button>
         <div id="login-error" class="error-msg"></div>
       </form>
+
+      <!-- Etapa 2 de Seleção de Refeitório no Login -->
+      <div id="login-refeitorios-step" style="display: none; margin-top: 15px; text-align: left;">
+        <h4 style="margin-bottom: 8px; color: #fff; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-utensils text-green"></i> Escolha do Refeitório
+        </h4>
+        <p id="refeitorio-selection-hint" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;"></p>
+        
+        <div id="login-refeitorios-list" style="max-height: 190px; overflow-y: auto; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;"></div>
+        
+        <div id="login-refeitorio-error" class="error-msg" style="margin-top: 0; margin-bottom: 10px; display: none;"></div>
+        <button type="button" id="btn-confirm-refeitorios" class="btn primary-btn" style="margin-bottom: 8px;">Confirmar e Acessar</button>
+        <button type="button" id="btn-cancel-refeitorios" class="btn secondary-btn" style="width: 100%;">Trocar Usuário</button>
+      </div>
     </div>
   </div>
 
@@ -46,6 +60,16 @@
         <button class="nav-btn" data-target="panel-visitantes"><i class="fa-solid fa-id-badge"></i> Visitantes</button>
         <button class="nav-btn" data-target="panel-veiculos"><i class="fa-solid fa-car"></i> Veículos</button>
         <button class="nav-btn" data-target="panel-leituras-veiculos"><i class="fa-solid fa-car-side"></i> Leituras Veículos</button>
+        <div class="nav-group" id="nav-group-refeicoes">
+          <button class="nav-btn nav-group-toggle" id="btn-refeicoes-toggle" type="button">
+            <span style="display: flex; align-items: center; gap: 15px;"><i class="fa-solid fa-utensils"></i> Refeições</span>
+            <i class="fa-solid fa-chevron-down nav-chevron"></i>
+          </button>
+          <div class="nav-submenu" id="submenu-refeicoes">
+            <button class="nav-btn nav-sub-btn" data-target="panel-refeitorios"><i class="fa-solid fa-hotel"></i> Refeitórios</button>
+            <button class="nav-btn nav-sub-btn" data-target="panel-refeicoes"><i class="fa-solid fa-list-check"></i> Leituras Refeição</button>
+          </div>
+        </div>
         <button class="nav-btn" data-target="panel-apk"><i class="fa-solid fa-mobile-screen-button"></i> Aplicativo (APK)</button>
       </nav>
       <div class="sidebar-footer">
@@ -98,7 +122,7 @@
         <div id="panel-users" class="panel">
           <div class="panel-header">
             <h3>Gerenciar Usuários</h3>
-            <button class="btn secondary-btn" onclick="openModal('user-modal')"><i class="fa-solid fa-plus"></i> Novo Usuário</button>
+            <button class="btn secondary-btn" onclick="openCreateUserModal()"><i class="fa-solid fa-plus"></i> Novo Usuário</button>
           </div>
           <div class="table-container">
             <table id="users-table">
@@ -576,6 +600,136 @@
           </div>
         </div>
 
+        <!-- Refeitórios Panel -->
+        <div id="panel-refeitorios" class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>Gerenciar Refeitórios</h3>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Cadastre e gerencie os refeitórios disponíveis para registro de refeições.</p>
+            </div>
+            <button class="btn secondary-btn" onclick="openCreateRefeitorioModal()"><i class="fa-solid fa-plus"></i> Novo Refeitório</button>
+          </div>
+          <div class="table-container">
+            <table id="refeitorios-table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">ID</th>
+                  <th>Descrição / Nome</th>
+                  <th style="width: 140px;">Status</th>
+                  <th style="width: 150px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Refeições Panel -->
+        <div id="panel-refeicoes" class="panel">
+          <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; position: relative;">
+              <h3>Leituras de Refeições (Marmitas)</h3>
+              <button id="btn-open-importar-encarregados" class="btn secondary-btn" onclick="openImportarEncarregadosModal()" style="height: 38px; width: auto; padding: 0 16px; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin: 0; border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1); cursor: pointer;">
+                <i class="fa-solid fa-file-excel" style="color: #34d399;"></i> Importar Encarregados (Excel)
+              </button>
+            </div>
+            
+            <div class="search-bar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 8px;">
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Data Inicial</label>
+                <input type="date" id="refeicoes-data-inicial" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Data Final</label>
+                <input type="date" id="refeicoes-data-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Hora Inicial</label>
+                <input type="time" id="refeicoes-hora-inicial" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Hora Final</label>
+                <input type="time" id="refeicoes-hora-final" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color);">
+              </div>
+              <div style="display: flex; flex-direction: column; min-width: 180px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Refeitório</label>
+                <select id="refeicoes-refeitorio-filter" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); height: 38px;">
+                  <option value="">Todos os Refeitórios</option>
+                </select>
+              </div>
+              <div style="display: flex; flex-direction: column; flex: 1; min-width: 250px;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px;">Buscar por</label>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                  <select id="refeicoes-search-field" style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); width: 125px;">
+                    <option value="matricula">Matrícula</option>
+                    <option value="nome">Nome</option>
+                    <option value="encarregado">Encarregado</option>
+                    <option value="credencial">Credencial</option>
+                  </select>
+                  <input type="text" id="refeicoes-search-input" placeholder="Buscar..." style="padding: 8px; border-radius: 5px; background: rgba(0,0,0,0.2); color: #fff; border: 1px solid var(--border-color); flex: 1; width: 100%;">
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.8rem; margin-bottom: 3px; visibility: hidden;">Ações</label>
+                <div style="display: flex; gap: 10px;">
+                  <button class="btn primary-btn" onclick="loadLeiturasRefeicao()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+                  <button class="btn secondary-btn" onclick="clearLeiturasRefeicaoFilters()" style="height: 38px; width: auto; padding: 0 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; margin: 0;"><i class="fa-solid fa-eraser"></i> Limpar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0 5px 0; position: relative;">
+            <div style="position: relative;">
+              <button class="btn secondary-btn" onclick="toggleColumnMenuRefeicoes()" style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;" title="Configurar Colunas">
+                <i class="fa-solid fa-table-columns"></i>
+              </button>
+              <div id="column-menu-refeicoes" class="column-menu hidden" style="top: 100%; left: 0;">
+                <label><input type="checkbox" checked value="0" onchange="toggleColumnRefeicoes(0)"> Matrícula</label>
+                <label><input type="checkbox" checked value="1" onchange="toggleColumnRefeicoes(1)"> Nome</label>
+                <label><input type="checkbox" checked value="2" onchange="toggleColumnRefeicoes(2)"> Encarregado</label>
+                <label><input type="checkbox" checked value="3" onchange="toggleColumnRefeicoes(3)"> Credencial</label>
+                <label><input type="checkbox" checked value="4" onchange="toggleColumnRefeicoes(4)"> Data/Hora Leitura</label>
+                <label><input type="checkbox" checked value="5" onchange="toggleColumnRefeicoes(5)"> Refeitório</label>
+                <label><input type="checkbox" checked value="6" onchange="toggleColumnRefeicoes(6)"> Situação</label>
+                <label><input type="checkbox" checked value="7" onchange="toggleColumnRefeicoes(7)"> ID Celular</label>
+              </div>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <button class="btn excel-btn" onclick="exportLeiturasRefeicaoExcel()" style="background-color: #217346; color: white; padding: 5px 10px; font-size: 0.75rem; width: auto; margin: 0;"><i class="fa-solid fa-file-excel"></i> Excel</button>
+              <button class="btn pdf-btn" onclick="exportLeiturasRefeicaoPDF()" style="background-color: #e21b1b; color: white; padding: 5px 10px; font-size: 0.75rem; width: auto; margin: 0;"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+            </div>
+          </div>
+          
+          <div class="table-container">
+            <table id="refeicoes-table">
+              <thead>
+                <tr>
+                  <th data-col="0">Matrícula</th>
+                  <th data-col="1">Nome</th>
+                  <th data-col="2">Encarregado</th>
+                  <th data-col="3">Credencial</th>
+                  <th data-col="4">Data/Hora Leitura</th>
+                  <th data-col="5">Refeitório</th>
+                  <th data-col="6">Situação</th>
+                  <th data-col="7">ID Celular</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <!-- Pagination for Leituras Refeições -->
+          <div id="refeicoes-pagination" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 15px; gap: 6px; font-size: 0.95rem; color: var(--text-main);">
+            <div id="refeicoes-total-count" style="font-weight: 700; font-size: 1rem; color: #fff;">Total de registros: 0</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn secondary-btn" onclick="changeRefeicoesPage(-1)" id="btn-refeicoes-prev" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Página Anterior"><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+              <span id="refeicoes-page-info" style="font-weight: 500;">Página 1 de 1</span>
+              <button class="btn secondary-btn" onclick="changeRefeicoesPage(1)" id="btn-refeicoes-next" style="padding: 6px 14px; font-size: 0.85rem; width: auto; margin: 0; display: flex; align-items: center; gap: 6px;" title="Próxima Página">Próximo <i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+
         <!-- APK Panel -->
         <div id="panel-apk" class="panel">
           <div class="panel-header">
@@ -650,21 +804,40 @@
   <div class="modal-overlay" id="user-modal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Novo Usuário</h3>
+        <h3 id="user-modal-title">Novo Usuário</h3>
         <button class="close-btn" onclick="closeModal('user-modal')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
         <form id="create-user-form">
-          <input type="text" id="u-nome" placeholder="Nome" required>
+          <input type="hidden" id="u-id">
+          <input type="text" id="u-nome" placeholder="Nome Completo" required>
           <input type="email" id="u-email" placeholder="Email" required>
-          <input type="text" id="u-login" placeholder="Login" required>
+          <input type="text" id="u-login" placeholder="Login de Acesso" required>
           <input type="text" id="u-cpf" placeholder="CPF" required>
-          <input type="password" id="u-senha" placeholder="Senha" required>
+          <div style="display: flex; flex-direction: column; text-align: left;">
+            <input type="password" id="u-senha" placeholder="Senha" required>
+            <span id="u-senha-hint" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; display: none;">* Deixe a senha em branco se não quiser alterá-la.</span>
+          </div>
           <select id="u-perfil">
             <option value="MOBILE">MOBILE (Agente Portaria)</option>
+            <option value="REFEICAO">REFEICAO (Agente Refeitório - 1 Refeitório)</option>
+            <option value="REFEICAO_MULTI">REFEICAO MULTI (Supervisor Refeitório - 1 a N Refeitórios)</option>
             <option value="MASTER">MASTER (Administrador)</option>
           </select>
-          <button type="submit" class="btn primary-btn">Salvar</button>
+          <div id="u-refeitorios-group" style="display: none; text-align: left; margin-bottom: 15px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+            <label id="u-refeitorios-label" style="display: block; font-size: 0.82rem; font-weight: 600; color: #93c5fd; margin-bottom: 8px;"><i class="fa-solid fa-utensils"></i> Refeitório Autorizado:</label>
+            <div id="u-refeitorio-single-box" style="display: none;">
+              <select id="u-refeitorio-single" style="width: 100%; margin-bottom: 0;">
+                <option value="">Selecione o refeitório...</option>
+              </select>
+            </div>
+            <div id="u-refeitorio-multi-box" style="display: none;">
+              <div id="u-refeitorios-checklist" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px;">
+                <!-- Preenchido dinamicamente via JS -->
+              </div>
+            </div>
+          </div>
+          <button type="submit" class="btn primary-btn" id="btn-save-user">Salvar Usuário</button>
         </form>
       </div>
     </div>
@@ -736,12 +909,53 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="refeitorio-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="refeitorio-modal-title">Novo Refeitório</h3>
+        <button class="close-btn" onclick="closeModal('refeitorio-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="refeitorio-form">
+          <input type="hidden" id="ref-id">
+          <input type="text" id="ref-descricao" placeholder="Nome / Descrição do Refeitório (ex: Refeitório Principal)" required>
+          <div id="ref-status-group" style="display: none; margin-bottom: 15px; text-align: left;">
+            <label style="color: #fff; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="ref-ativo" checked style="width: auto; margin: 0;"> Refeitório Ativo
+            </label>
+          </div>
+          <button type="submit" class="btn primary-btn" id="btn-save-refeitorio">Salvar Refeitório</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="importar-encarregados-modal">
+    <div class="modal" style="width: 450px;">
+      <div class="modal-header">
+        <h3 id="importar-encarregados-modal-title"><i class="fa-solid fa-file-excel" style="color: #34d399; margin-right: 8px;"></i> Importar Encarregados</h3>
+        <button class="close-btn" onclick="closeModal('importar-encarregados-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4; text-align: left;">
+          Selecione a planilha Excel (<strong>.xlsx</strong> ou <strong>.xls</strong>) contendo as colunas <strong>CHAPA</strong>, <strong>NOME</strong> e <strong>NOME ENCARREGADO</strong>.
+        </p>
+        <form id="importar-encarregados-form">
+          <input type="file" id="encarregados-file-input" accept=".xlsx, .xls" required style="padding: 10px; background: rgba(0,0,0,0.25); border: 1px dashed var(--border-color); border-radius: 8px; margin-bottom: 15px; width: 100%;">
+          <div id="importar-encarregados-status" style="display: none; margin-bottom: 12px; font-size: 0.85rem; text-align: left; padding: 10px; border-radius: 6px;"></div>
+          <button type="submit" class="btn primary-btn" id="btn-submit-encarregados" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Processar e Vincular
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- Bibliotecas de Exportação -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   
-  <script src="app.js?v=1.0.4"></script>
+  <script src="app.js?v=1.0.9"></script>
 </body>
 </html>

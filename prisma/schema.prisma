@@ -14,8 +14,9 @@ model Usuario {
   login     String   @unique
   cpf       String   @unique
   senha     String
-  perfil    String   // "MASTER" ou "MOBILE"
+  perfil    String   // "MASTER", "MOBILE", "REFEICAO", "REFEICAO_MULTI"
   logs      LogOperacao[]
+  refeitorios UsuarioRefeitorio[]
 }
 
 model Portaria {
@@ -33,6 +34,7 @@ model Pessoa {
   observacao                String?
   data_ultima_sincronizacao DateTime @default(now())
   ativo                     Boolean  @default(true)
+  nome_encarregado          String?
 }
 
 model LeituraRFID {
@@ -92,4 +94,38 @@ model Visitante {
   data_fim      DateTime?
   deleted       Boolean   @default(false)
 }
+
+model LeituraRefeicao {
+  id                      String      @id @default(uuid())
+  credencial              String
+  matricula               String?
+  nome                    String?
+  data_hora_leitura       DateTime
+  data_hora_sincronizacao DateTime    @default(now())
+  id_celular              String
+  situacao                Int         // 0 ou 1
+  id_refeitorio           Int?
+  refeitorio              Refeitorio? @relation(fields: [id_refeitorio], references: [id])
+  nome_encarregado        String?
+}
+
+model Refeitorio {
+  id           Int                 @id @default(autoincrement())
+  descricao    String
+  ativo        Boolean             @default(true)
+  data_criacao DateTime            @default(now())
+  leituras     LeituraRefeicao[]
+  usuarios     UsuarioRefeitorio[]
+}
+
+model UsuarioRefeitorio {
+  id_usuario    Int
+  id_refeitorio Int
+  usuario       Usuario    @relation(fields: [id_usuario], references: [id], onDelete: Cascade)
+  refeitorio    Refeitorio @relation(fields: [id_refeitorio], references: [id], onDelete: Cascade)
+
+  @@id([id_usuario, id_refeitorio])
+}
+
+
 

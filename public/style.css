@@ -132,6 +132,45 @@ body {
 }
 .secondary-btn:hover { background: rgba(255,255,255,0.2); }
 
+/* Botões de Ação em Tabelas - Padrão harmônico e compacto para toda a aplicação */
+table .btn.secondary-btn,
+table .btn.danger-btn,
+table .btn-action,
+.btn-table-action {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--border-color) !important;
+  color: #fff !important;
+  font-size: 0.85rem !important;
+  margin: 0 3px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+table .btn.secondary-btn:hover,
+table .btn.danger-btn:hover,
+table .btn-action:hover,
+.btn-table-action:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+table .btn.secondary-btn i,
+table .btn.danger-btn i,
+table .btn-action i,
+.btn-table-action i {
+  font-size: 0.82rem !important;
+}
+
 .error-msg {
   color: var(--danger);
   margin-top: 15px;
@@ -170,8 +209,9 @@ body {
 
 .sidebar-nav {
   flex: 1;
-  padding: 20px 0;
+  padding: 20px 0 60px 0;
   overflow-y: auto;
+  scroll-behavior: smooth;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none;  /* IE/Edge */
 }
@@ -309,13 +349,54 @@ tbody tr:hover { background: rgba(255,255,255,0.02); }
 }
 .modal-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; }
 .modal-body { padding: 20px; }
-.modal-body input, .modal-body select {
+.modal-body input:not([type="checkbox"]):not([type="radio"]), .modal-body select {
   width: 100%; padding: 12px; margin-bottom: 15px;
   background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
   color: #fff; border-radius: 8px;
 }
 .modal-body select option { background: var(--bg-color); }
 .close-btn { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }
+
+/* Estilo para itens de seleção de refeitório no modal de usuário */
+.modal-body input[type="checkbox"],
+.modal-body input[type="radio"] {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+}
+
+.user-refeitorio-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 9px 12px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  color: #e2e8f0 !important;
+  font-size: 0.9rem !important;
+  margin-bottom: 6px !important;
+  user-select: none !important;
+  text-align: left !important;
+}
+
+.user-refeitorio-item:hover {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.user-refeitorio-item span {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 500;
+}
 
 /* Animations */
 @keyframes slideUp {
@@ -473,3 +554,75 @@ select option {
   background-color: #1e293b;
   color: var(--text-main);
 }
+
+/* Sidebar Nav Groups & Submenus */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.nav-group-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.nav-chevron {
+  font-size: 0.8rem;
+  transition: transform 0.25s ease;
+  margin-left: auto;
+}
+
+.nav-group.open .nav-chevron {
+  transform: rotate(180deg);
+}
+
+.nav-submenu {
+  display: none;
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 3px solid var(--primary-color);
+  margin-left: 20px;
+  border-radius: 0 0 8px 0;
+  overflow: hidden;
+}
+
+.nav-group.open .nav-submenu {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-sub-btn {
+  padding: 11px 20px !important;
+  font-size: 0.95rem !important;
+  gap: 12px !important;
+}
+
+/* Opções de Refeitório no Login */
+.refeitorio-option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.refeitorio-option-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--primary-color);
+}
+
+.refeitorio-option-item input {
+  cursor: pointer;
+  accent-color: var(--primary-color);
+  width: 16px;
+  height: 16px;
+}
+

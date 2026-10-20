@@ -160,6 +160,169 @@ export async function autoSyncXLS(request, reply) {
   }
 }
 
+export async function importarEncarregadosXLS(request, reply) {
+  const data = await request.file();
+
+  if (!data) {
+    return reply.status(400).send({ error: 'Nenhum arquivo enviado.' });
+  }
+
+  try {
+    const buffer = await data.toBuffer();
+    const workbook = xlsx.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // Ler todas as linhas da planilha
+    const rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (!rows || rows.length === 0) {
+      return reply.status(400).send({ error: 'A planilha enviada está vazia.' });
+    }
+
+    // Funções utilitárias de higienização e normalização
+    const cleanStr = (val) => {
+      if (val === null || val === undefined) return '';
+      return String(val).trim().replace(/\s+/g, ' ');
+    };
+
+    const normalizeComp = (val) => {
+      return cleanStr(val)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase();
+    };
+
+    const normalizeMatricula = (val) => {
+      return cleanStr(val).replace(/\.0+$/, '').replace(/\s+/g, '');
+    };
+
+    // Identificar nomes das colunas no cabeçalho
+    const firstRowKeys = Object.keys(rows[0]);
+    let colChapa = null;
+    let colNome = null;
+    let colEncarregado = null;
+
+    for (const key of firstRowKeys) {
+      const normKey = normalizeComp(key);
+      if (normKey.includes('ENCARREGADO') || normKey.includes('SUPERVISOR') || normKey.includes('LIDER')) {
+        colEncarregado = key;
+      } else if (normKey.includes('CHAPA') || normKey.includes('MATRICULA')) {
+        colChapa = key;
+      } else if (normKey.includes('NOME') && !colNome) {
+        colNome = key;
+      }
+    }
+
+    if (!colChapa && !colNome) {
+      return reply.status(400).send({ 
+        error: 'Não foi possível identificar a coluna de Matrícula (CHAPA) ou Nome na planilha. Verifique o cabeçalho.' 
+      });
+    }
+
+    if (!colEncarregado) {
+      return reply.status(400).send({ 
+        error: 'Não foi possível identificar a coluna do Encarregado (ex: NOME ENCARREGADO). Verifique o cabeçalho.' 
+      });
+    }
+
+    // Carregar todas as pessoas cadastradas para indexar e comparar
+    const todasPessoas = await prisma.pessoa.findMany();
+    const matriculaMap = new Map();
+    const matriculaSemZeroMap = new Map();
+    const nomeMap = new Map();
+
+    for (const p of todasPessoas) {
+      const mClean = normalizeMatricula(p.matricula);
+      matriculaMap.set(mClean, p);
+      matriculaSemZeroMap.set(mClean.replace(/^0+/, ''), p);
+      if (p.nome) {
+        nomeMap.set(normalizeComp(p.nome), p);
+      }
+    }
+
+    let totalLinhas = 0;
+    let vinculadosPessoas = 0;
+    let leiturasAtualizadasCount = 0;
+
+    // Agrupamento por encarregado para atualização em massa
+    const encarregadoMatriculasMap = new Map();
+
+    for (const row of rows) {
+      totalLinhas++;
+      const rawChapa = colChapa ? row[colChapa] : '';
+      const rawNome = colNome ? row[colNome] : '';
+      const rawEncarregado = row[colEncarregado];
+
+      const chapaStr = normalizeMatricula(rawChapa);
+      const nomeStr = cleanStr(rawNome).toUpperCase();
+      const encarregadoStr = cleanStr(rawEncarregado).toUpperCase();
+
+      if (!encarregadoStr) continue;
+
+      // Localizar pessoa cadastrada
+      let pessoaEncontrada = null;
+      if (chapaStr) {
+        pessoaEncontrada = matriculaMap.get(chapaStr) || matriculaSemZeroMap.get(chapaStr.replace(/^0+/, ''));
+      }
+      if (!pessoaEncontrada && nomeStr) {
+        pessoaEncontrada = nomeMap.get(normalizeComp(nomeStr));
+      }
+
+      if (pessoaEncontrada) {
+        // Atualiza Pessoa
+        await prisma.pessoa.update({
+          where: { matricula: pessoaEncontrada.matricula },
+          data: { nome_encarregado: encarregadoStr }
+        });
+        vinculadosPessoas++;
+
+        // Agrupar para atualizar leituras retroativamente
+        if (!encarregadoMatriculasMap.has(encarregadoStr)) {
+          encarregadoMatriculasMap.set(encarregadoStr, new Set());
+        }
+        encarregadoMatriculasMap.get(encarregadoStr).add(pessoaEncontrada.matricula);
+        if (chapaStr) {
+          encarregadoMatriculasMap.get(encarregadoStr).add(chapaStr);
+        }
+      }
+    }
+
+    // Atualização retroativa em massa das leituras de refeição
+    for (const [encNome, matriculasSet] of encarregadoMatriculasMap.entries()) {
+      const matriculasArray = Array.from(matriculasSet);
+      if (matriculasArray.length > 0) {
+        const updateRes = await prisma.leituraRefeicao.updateMany({
+          where: {
+            matricula: { in: matriculasArray }
+          },
+          data: {
+            nome_encarregado: encNome
+          }
+        });
+        leiturasAtualizadasCount += updateRes.count;
+      }
+    }
+
+    await logOperacao(request.user?.id, 'IMPORT_ENCARREGADOS', 'Pessoa', {
+      total_linhas: totalLinhas,
+      vinculados_pessoas: vinculadosPessoas,
+      leituras_atualizadas: leiturasAtualizadasCount
+    });
+
+    return reply.send({
+      message: 'Planilha de encarregados processada com sucesso!',
+      totalLinhas,
+      vinculadosPessoas,
+      leiturasAtualizadasCount
+    });
+
+  } catch (error) {
+    console.error('Erro ao importar encarregados:', error);
+    return reply.status(500).send({ error: 'Erro ao processar planilha: ' + error.message });
+  }
+}
+
 export async function getLastSyncInfo(request, reply) {
   try {
     const lastPessoa = await prisma.pessoa.findFirst({

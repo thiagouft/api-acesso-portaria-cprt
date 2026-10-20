@@ -15,6 +15,7 @@ import syncRoutes from './routes/syncRoutes.js';
 import veiculoRoutes from './routes/veiculoRoutes.js';
 import apkRoutes from './routes/apkRoutes.js';
 import visitanteRoutes from './routes/visitanteRoutes.js';
+import refeitorioRoutes from './routes/refeitorioRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,7 @@ fastify.register(syncRoutes, { prefix: '/api/sync' });
 fastify.register(veiculoRoutes, { prefix: '/api/veiculos' });
 fastify.register(apkRoutes, { prefix: '/api/apk' });
 fastify.register(visitanteRoutes, { prefix: '/api/visitantes' });
+fastify.register(refeitorioRoutes, { prefix: '/api/refeitorios' });
 
 import { startAutoSyncScheduler } from './controllers/pessoaController.js';
 

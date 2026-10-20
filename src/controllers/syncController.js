@@ -439,3 +439,159 @@ export async function getLeiturasVeiculo(request, reply) {
     return reply.status(500).send({ error: 'Erro ao buscar leituras de veículos.' });
   }
 }
+
+export async function syncLeiturasRefeicao(request, reply) {
+  const { leituras } = request.body;
+
+  if (!Array.isArray(leituras) || leituras.length === 0) {
+    return reply.status(400).send({ error: 'Nenhum dado de leitura de refeição fornecido ou formato inválido.' });
+  }
+
+  let count = 0;
+
+  try {
+    // Buscar pessoas para fallback caso nome ou matricula não tenham vindo do celular
+    const todasPessoas = await prisma.pessoa.findMany();
+    const pessoaMap = {};
+    const matriculaMap = {};
+    for (const p of todasPessoas) {
+      if (p.matricula) {
+        matriculaMap[p.matricula.trim()] = p;
+      }
+      if (p.credenciais) {
+        const creds = p.credenciais.split(',').map(c => c.trim());
+        for (const c of creds) {
+          pessoaMap[c] = p;
+        }
+      }
+    }
+
+    for (const leitura of leituras) {
+      const credStr = String(leitura.credencial).trim();
+      const pInfo = pessoaMap[credStr] || (leitura.matricula ? matriculaMap[String(leitura.matricula).trim()] : null);
+
+      const matricula = leitura.matricula && leitura.matricula !== '-' ? leitura.matricula : (pInfo ? pInfo.matricula : '-');
+      const nome = leitura.nome && leitura.nome !== 'Não Cadastrado' ? leitura.nome : (pInfo ? pInfo.nome : 'Não Cadastrado');
+      const situacao = leitura.situacao !== undefined ? parseInt(leitura.situacao) : (pInfo ? pInfo.situacao : 0);
+      const encarregado = pInfo && pInfo.nome_encarregado ? pInfo.nome_encarregado.trim() : null;
+
+      await prisma.leituraRefeicao.create({
+        data: {
+          id: leitura.id || undefined,
+          credencial: credStr,
+          matricula,
+          nome,
+          nome_encarregado: encarregado,
+          data_hora_leitura: new Date(leitura.data_hora_leitura),
+          data_hora_sincronizacao: new Date(),
+          id_celular: leitura.id_celular || 'CELULAR_DESCONHECIDO',
+          situacao,
+          id_refeitorio: leitura.id_refeitorio ? parseInt(leitura.id_refeitorio) : null
+        }
+      });
+      count++;
+    }
+
+    await logOperacao(request.user.id, 'SYNC_MOBILE_REFEICAO', 'LeituraRefeicao', { registros_sincronizados: count, id_celular: leituras[0]?.id_celular });
+
+    return reply.status(200).send({ message: `${count} leituras de refeição sincronizadas com sucesso.`, count });
+  } catch (error) {
+    console.error(error);
+    return reply.status(500).send({ error: 'Erro ao sincronizar leituras de refeição.' });
+  }
+}
+
+export async function getLeiturasRefeicao(request, reply) {
+  const { dataInicial, dataFinal, matricula, nome, horaInicial, horaFinal, credencial, id_refeitorio, encarregado } = request.query;
+
+  const where = {};
+
+  if (credencial) {
+    where.credencial = { contains: credencial.trim() };
+  }
+
+  if (matricula) {
+    where.matricula = { contains: matricula.trim() };
+  }
+
+  if (nome) {
+    where.nome = { contains: nome.trim() };
+  }
+
+  if (encarregado) {
+    where.nome_encarregado = { contains: encarregado.trim() };
+  }
+
+  if (id_refeitorio) {
+    where.id_refeitorio = parseInt(id_refeitorio);
+  }
+
+  if (dataInicial || dataFinal) {
+    where.data_hora_leitura = {};
+    if (dataInicial) {
+      where.data_hora_leitura.gte = parseLocalToUtc(dataInicial, '00:00:00');
+    }
+    if (dataFinal) {
+      where.data_hora_leitura.lte = parseLocalToUtc(dataFinal, '23:59:59');
+    }
+  }
+
+  const hasFilter = Boolean(dataInicial || dataFinal || matricula || nome || horaInicial || horaFinal || credencial || id_refeitorio || encarregado);
+
+  try {
+    const queryOptions = {
+      where,
+      include: {
+        refeitorio: { select: { id: true, descricao: true } }
+      },
+      orderBy: {
+        data_hora_leitura: 'desc'
+      }
+    };
+
+    if (!hasFilter) {
+      queryOptions.take = 2000;
+    }
+
+    let leituras = await prisma.leituraRefeicao.findMany(queryOptions);
+
+    // Filtro por intervalo de horas (hh:mm no fuso local)
+    if (horaInicial || horaFinal) {
+      leituras = leituras.filter(l => {
+        const timeStr = getLocalTimeStr(l.data_hora_leitura);
+        
+        if (horaInicial && timeStr < horaInicial) return false;
+        if (horaFinal && timeStr > horaFinal) return false;
+        return true;
+      });
+    }
+
+    // Carregar mapa de pessoas para fallback de leituras antigas que não tenham encarregado
+    let fallbackPessoasMap = null;
+    const formattedLeituras = await Promise.all(leituras.map(async (l) => {
+      let enc = l.nome_encarregado;
+      if (!enc && l.matricula && l.matricula !== '-') {
+        if (!fallbackPessoasMap) {
+          const pList = await prisma.pessoa.findMany({
+            where: { nome_encarregado: { not: null } },
+            select: { matricula: true, nome_encarregado: true }
+          });
+          fallbackPessoasMap = new Map();
+          pList.forEach(p => fallbackPessoasMap.set(p.matricula.trim(), p.nome_encarregado));
+        }
+        enc = fallbackPessoasMap.get(l.matricula.trim()) || null;
+      }
+
+      return {
+        ...l,
+        encarregado: enc ? enc.trim() : 'Não Informado',
+        refeitorio: l.refeitorio ? l.refeitorio.descricao : 'Não Informado'
+      };
+    }));
+
+    return reply.send(formattedLeituras);
+  } catch (e) {
+    console.error(e);
+    return reply.status(500).send({ error: 'Erro ao buscar leituras de refeição.' });
+  }
+}

@@ -1,4 +1,4 @@
-import { uploadXLS, getPessoas, autoSyncXLS, getLastSyncInfo } from '../controllers/pessoaController.js';
+import { uploadXLS, getPessoas, autoSyncXLS, getLastSyncInfo, importarEncarregadosXLS } from '../controllers/pessoaController.js';
 import { authenticate } from '../middlewares/authMiddleware.js';
 
 export default async function pessoaRoutes(fastify, options) {
@@ -9,4 +9,5 @@ export default async function pessoaRoutes(fastify, options) {
   // fastify-multipart é necessário, certifique-se que o controller use request.file() que vem desse plugin
   fastify.post('/upload', uploadXLS);
   fastify.post('/auto-sync', autoSyncXLS);
+  fastify.post('/importar-encarregados', importarEncarregadosXLS);
 }

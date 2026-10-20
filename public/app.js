@@ -2,6 +2,8 @@ const API_URL = '/api';
 let token = localStorage.getItem('cprt_token');
 let userProfile = null;
 let isLoggingOut = false;
+let tempLoginData = null;
+let allRefeitorios = [];
 
 // Auth Check on load
 window.onload = () => {
@@ -9,10 +11,17 @@ window.onload = () => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       userProfile = payload.perfil;
-      document.getElementById('user-name-display').innerText = payload.nome || payload.login;
+      document.getElementById('user-name-display').innerText = `${payload.nome || payload.login} (${userProfile})`;
+      
+      // Ajustar visibilidade de menus para perfis de Refeição
+      if (userProfile === 'REFEICAO' || userProfile === 'REFEICAO_MULTI') {
+        applyRefeicaoProfileRestrictions();
+      }
+
       showScreen('dashboard-screen');
       loadInitialData();
     } catch(e) {
+      console.error(e);
       logout();
     }
   } else {
@@ -20,17 +29,75 @@ window.onload = () => {
   }
 };
 
+function applyRefeicaoProfileRestrictions() {
+  // Ocultar menus exclusivos MASTER
+  const masterPanels = ['panel-home', 'panel-users', 'panel-portarias', 'panel-upload', 'panel-leituras', 'panel-pessoas', 'panel-visitantes', 'panel-veiculos', 'panel-leituras-veiculos', 'panel-apk'];
+  document.querySelectorAll('.sidebar-nav .nav-btn').forEach(btn => {
+    if (masterPanels.includes(btn.dataset.target)) {
+      btn.style.display = 'none';
+    }
+  });
+
+  // Abrir o grupo de refeições e selecionar Leituras de Refeição
+  const group = document.getElementById('nav-group-refeicoes');
+  if (group) group.classList.add('open');
+
+  const btnRefeicoes = document.querySelector('.nav-btn[data-target="panel-refeicoes"]');
+  if (btnRefeicoes) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btnRefeicoes.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-refeicoes').classList.add('active');
+    document.getElementById('current-page-title').innerText = 'Leituras Refeição';
+  }
+}
+
+// Submenu toggle listener
+const refeicoesToggle = document.getElementById('btn-refeicoes-toggle');
+if (refeicoesToggle) {
+  refeicoesToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const group = document.getElementById('nav-group-refeicoes');
+    if (group) {
+      const isOpening = !group.classList.contains('open');
+      group.classList.toggle('open');
+      
+      if (isOpening) {
+        setTimeout(() => {
+          const sidebarNav = document.querySelector('.sidebar-nav');
+          if (sidebarNav) {
+            sidebarNav.scrollTo({
+              top: sidebarNav.scrollHeight,
+              behavior: 'smooth'
+            });
+          }
+          group.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 120);
+      }
+    }
+  });
+}
+
 // UI Navigation
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  if(btn.id === 'logout-btn') return;
+  if(btn.id === 'logout-btn' || btn.id === 'btn-refeicoes-toggle') return;
   btn.addEventListener('click', (e) => {
+    if (!btn.dataset.target) return;
+
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(btn.dataset.target).classList.add('active');
+    const targetPanel = document.getElementById(btn.dataset.target);
+    if (targetPanel) targetPanel.classList.add('active');
     
-    document.getElementById('current-page-title').innerText = btn.innerText;
+    document.getElementById('current-page-title').innerText = btn.innerText.trim();
+
+    // Se clicou em um sub-botão de refeições, manter o grupo aberto
+    if (btn.classList.contains('nav-sub-btn')) {
+      const group = document.getElementById('nav-group-refeicoes');
+      if (group) group.classList.add('open');
+    }
 
     // Load data based on panel
     if (btn.dataset.target === 'panel-users') loadUsers();
@@ -40,6 +107,11 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     else if (btn.dataset.target === 'panel-visitantes') loadVisitantes();
     else if (btn.dataset.target === 'panel-veiculos') loadVeiculos();
     else if (btn.dataset.target === 'panel-leituras-veiculos') loadLeiturasVeiculo();
+    else if (btn.dataset.target === 'panel-refeitorios') loadRefeitorios();
+    else if (btn.dataset.target === 'panel-refeicoes') {
+      loadRefeitoriosOptions();
+      loadLeiturasRefeicao();
+    }
     else if (btn.dataset.target === 'panel-apk') loadAPKInfo();
   });
 });
@@ -54,6 +126,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const loginInput = document.getElementById('login-input').value;
   const passwordInput = document.getElementById('password-input').value;
+  const loginError = document.getElementById('login-error');
+  loginError.innerText = '';
 
   try {
     const res = await fetch(`${API_URL}/auth/login`, {
@@ -63,19 +137,115 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     });
     const data = await res.json();
     if (res.ok) {
-      if (data.usuario.perfil !== 'MASTER') {
-        document.getElementById('login-error').innerText = 'Acesso apenas para administradores MASTER.';
+      if (data.usuario.perfil === 'MOBILE') {
+        loginError.innerText = 'Acesso MOBILE exclusivo pelo aplicativo.';
         return;
       }
+
+      // Se for perfil de refeição, apresentar a escolha do(s) refeitório(s)
+      if (data.usuario.perfil === 'REFEICAO' || data.usuario.perfil === 'REFEICAO_MULTI') {
+        tempLoginData = data;
+        showRefeitorioSelectionStep(data);
+        return;
+      }
+
+      if (data.usuario.perfil !== 'MASTER') {
+        loginError.innerText = 'Acesso não permitido para este perfil.';
+        return;
+      }
+
       token = data.token;
       localStorage.setItem('cprt_token', token);
       window.location.reload();
     } else {
-      document.getElementById('login-error').innerText = data.error || 'Erro no login';
+      loginError.innerText = data.error || 'Erro no login';
     }
   } catch (err) {
-    document.getElementById('login-error').innerText = 'Erro ao conectar no servidor.';
+    loginError.innerText = 'Erro ao conectar no servidor.';
   }
+});
+
+// Etapa de Escolha de Refeitório no Login
+function showRefeitorioSelectionStep(data) {
+  document.getElementById('login-form').style.display = 'none';
+  const stepDiv = document.getElementById('login-refeitorios-step');
+  stepDiv.style.display = 'block';
+
+  const hint = document.getElementById('refeitorio-selection-hint');
+  const list = document.getElementById('login-refeitorios-list');
+  const err = document.getElementById('login-refeitorio-error');
+  err.style.display = 'none';
+  list.innerHTML = '';
+
+  const isMulti = data.usuario.podeSelecionarMultiplosRefeitorios;
+  if (isMulti) {
+    hint.innerText = 'Seu perfil (REFEICAO MULTI) permite selecionar de 1 a N refeitórios:';
+  } else {
+    hint.innerText = 'Selecione o refeitório em que você está operando:';
+  }
+
+  const refeitorios = data.refeitorios || [];
+  if (refeitorios.length === 0) {
+    list.innerHTML = '<p style="color: var(--danger); font-size: 0.85rem; padding: 10px; margin: 0; line-height: 1.4;"><i class="fa-solid fa-circle-exclamation"></i> Nenhum refeitório autorizado para este usuário. Solicite ao administrador MASTER o vínculo do seu refeitório.</p>';
+    document.getElementById('btn-confirm-refeitorios').disabled = true;
+    return;
+  }
+
+  document.getElementById('btn-confirm-refeitorios').disabled = false;
+
+  if (isMulti) {
+    // Checkbox Selecionar Todos
+    const selectAllLabel = document.createElement('label');
+    selectAllLabel.className = 'refeitorio-option-item';
+    selectAllLabel.style.fontWeight = 'bold';
+    selectAllLabel.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+    selectAllLabel.innerHTML = `<input type="checkbox" id="check-all-refeitorios"> <span>(Selecionar Todos)</span>`;
+    selectAllLabel.querySelector('input').addEventListener('change', (e) => {
+      document.querySelectorAll('.login-refeitorio-chk').forEach(chk => chk.checked = e.target.checked);
+    });
+    list.appendChild(selectAllLabel);
+  }
+
+  refeitorios.forEach((ref, index) => {
+    const label = document.createElement('label');
+    label.className = 'refeitorio-option-item';
+    const inputType = isMulti ? 'checkbox' : 'radio';
+    const checkedAttr = (!isMulti && index === 0) ? 'checked' : '';
+    label.innerHTML = `
+      <input type="${inputType}" name="refeitorio_choice" class="${isMulti ? 'login-refeitorio-chk' : 'login-refeitorio-radio'}" value="${ref.id}" data-desc="${ref.descricao}" ${checkedAttr}>
+      <span>${ref.descricao}</span>
+    `;
+    list.appendChild(label);
+  });
+}
+
+document.getElementById('btn-cancel-refeitorios').addEventListener('click', () => {
+  tempLoginData = null;
+  document.getElementById('login-refeitorios-step').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('login-error').innerText = '';
+});
+
+document.getElementById('btn-confirm-refeitorios').addEventListener('click', () => {
+  const err = document.getElementById('login-refeitorio-error');
+  err.style.display = 'none';
+
+  const isMulti = tempLoginData.usuario.podeSelecionarMultiplosRefeitorios;
+  const selected = [];
+  const selector = isMulti ? '.login-refeitorio-chk:checked' : '.login-refeitorio-radio:checked';
+  document.querySelectorAll(selector).forEach(input => {
+    selected.push({ id: parseInt(input.value), descricao: input.dataset.desc });
+  });
+
+  if (selected.length === 0) {
+    err.innerText = isMulti ? 'Selecione pelo menos um refeitório para continuar.' : 'Selecione um refeitório para continuar.';
+    err.style.display = 'block';
+    return;
+  }
+
+  localStorage.setItem('cprt_token', tempLoginData.token);
+  localStorage.setItem('cprt_refeitorios_selecionados', JSON.stringify(selected));
+  window.location.reload();
 });
 
 // Logout
@@ -83,6 +253,7 @@ document.getElementById('logout-btn').addEventListener('click', logout);
 function logout() {
   isLoggingOut = true;
   localStorage.removeItem('cprt_token');
+  localStorage.removeItem('cprt_refeitorios_selecionados');
   window.location.reload();
 }
 
@@ -97,7 +268,7 @@ async function fetchAuth(url, options = {}) {
   }
 
   const headers = options.headers || {};
-  if (!options.isFormData && options.body) {
+  if (!options.isFormData && !(options.body instanceof FormData) && options.body) {
     headers['Content-Type'] = 'application/json';
   }
   headers['Authorization'] = `Bearer ${token}`;
@@ -156,46 +327,256 @@ async function loadInitialData() {
 }
 
 // Users
+// Users
+let allUsersList = [];
+
 async function loadUsers() {
-  const res = await fetchAuth('/users');
-  const users = await res.json();
   const tbody = document.querySelector('#users-table tbody');
-  tbody.innerHTML = users.map(u => `
-    <tr>
-      <td>${u.nome}</td>
-      <td>${u.login}</td>
-      <td>${u.email}</td>
-      <td><span class="badge ${u.perfil === 'MASTER' ? 'success' : ''}">${u.perfil}</span></td>
-      <td><button class="btn secondary-btn" onclick="deleteUser(${u.id})"><i class="fa-solid fa-trash"></i></button></td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;"><i class="fa-solid fa-spinner fa-spin"></i> Carregando usuários...</td></tr>';
+  
+  try {
+    const res = await fetchAuth('/users');
+    allUsersList = await res.json();
+
+    if (!allUsersList || allUsersList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Nenhum usuário cadastrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = allUsersList.map(u => {
+      const hasRefeitorios = u.refeitorios && u.refeitorios.length > 0;
+      const refeitoriosText = hasRefeitorios 
+        ? u.refeitorios.map(r => r.descricao).join(', ')
+        : 'Nenhum refeitório vinculado';
+      return `
+        <tr>
+          <td style="font-weight: 500;">${u.nome}</td>
+          <td>${u.login}</td>
+          <td>${u.email}</td>
+          <td>
+            <span class="badge ${u.perfil === 'MASTER' ? 'success' : (String(u.perfil).startsWith('REFEICAO') ? 'info' : '')}">${u.perfil}</span>
+            ${String(u.perfil).startsWith('REFEICAO') ? `
+              <div style="font-size: 0.75rem; color: #93c5fd; margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                <i class="fa-solid fa-utensils"></i> <span title="${refeitoriosText}">${refeitoriosText}</span>
+              </div>
+            ` : ''}
+          </td>
+          <td>
+            <button class="btn secondary-btn" onclick="openEditUserModal(${u.id})" title="Editar Usuário"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn secondary-btn" onclick="deleteUser(${u.id})" title="Excluir Usuário"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--danger);">Erro ao carregar usuários.</td></tr>';
+  }
+}
+
+async function ensureRefeitoriosLoaded() {
+  if (!allRefeitorios || allRefeitorios.length === 0) {
+    try {
+      const res = await fetchAuth('/refeitorios');
+      if (res.ok) {
+        allRefeitorios = await res.json();
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar lista de refeitórios:', e);
+    }
+  }
+  return allRefeitorios || [];
+}
+
+async function updateUserModalRefeitorios(perfil, selectedIds = []) {
+  const group = document.getElementById('u-refeitorios-group');
+  const singleBox = document.getElementById('u-refeitorio-single-box');
+  const multiBox = document.getElementById('u-refeitorio-multi-box');
+  const label = document.getElementById('u-refeitorios-label');
+  const singleSelect = document.getElementById('u-refeitorio-single');
+  const checkList = document.getElementById('u-refeitorios-checklist');
+
+  if (!group || !singleBox || !multiBox) return;
+
+  if (perfil !== 'REFEICAO' && perfil !== 'REFEICAO_MULTI') {
+    group.style.display = 'none';
+    singleBox.style.display = 'none';
+    multiBox.style.display = 'none';
+    return;
+  }
+
+  const refeitorios = await ensureRefeitoriosLoaded();
+  const ativos = (refeitorios || []).filter(r => r.ativo);
+
+  group.style.display = 'block';
+
+  if (perfil === 'REFEICAO') {
+    label.innerHTML = '<i class="fa-solid fa-utensils"></i> Refeitório Autorizado (Selecione 1):';
+    singleBox.style.display = 'block';
+    multiBox.style.display = 'none';
+
+    singleSelect.innerHTML = '<option value="">Selecione o refeitório...</option>';
+    ativos.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.innerText = r.descricao;
+      if (selectedIds.includes(r.id)) {
+        opt.selected = true;
+      }
+      singleSelect.appendChild(opt);
+    });
+  } else if (perfil === 'REFEICAO_MULTI') {
+    label.innerHTML = '<i class="fa-solid fa-utensils"></i> Refeitórios Autorizados (Selecione 1 ou mais):';
+    singleBox.style.display = 'none';
+    multiBox.style.display = 'block';
+
+    checkList.innerHTML = '';
+    if (ativos.length === 0) {
+      checkList.innerHTML = '<span style="color: var(--danger); font-size: 0.8rem;">Nenhum refeitório ativo disponível.</span>';
+    } else {
+      ativos.forEach(r => {
+        const itemLabel = document.createElement('label');
+        itemLabel.className = 'user-refeitorio-item';
+        const isChecked = selectedIds.includes(r.id);
+        itemLabel.innerHTML = `
+          <input type="checkbox" class="u-ref-chk" value="${r.id}" ${isChecked ? 'checked' : ''}>
+          <span>${r.descricao}</span>
+        `;
+        checkList.appendChild(itemLabel);
+      });
+    }
+  }
+}
+
+// Evento ao alterar perfil no formulário
+const uPerfilSelect = document.getElementById('u-perfil');
+if (uPerfilSelect) {
+  uPerfilSelect.addEventListener('change', (e) => {
+    updateUserModalRefeitorios(e.target.value);
+  });
+}
+
+function openCreateUserModal() {
+  document.getElementById('user-modal-title').innerText = 'Novo Usuário';
+  document.getElementById('u-id').value = '';
+  document.getElementById('u-nome').value = '';
+  document.getElementById('u-email').value = '';
+  document.getElementById('u-login').value = '';
+  document.getElementById('u-cpf').value = '';
+  const senhaInput = document.getElementById('u-senha');
+  senhaInput.value = '';
+  senhaInput.required = true;
+  senhaInput.placeholder = 'Senha';
+  document.getElementById('u-senha-hint').style.display = 'none';
+  document.getElementById('u-perfil').value = 'MOBILE';
+  updateUserModalRefeitorios('MOBILE');
+  openModal('user-modal');
+}
+
+function openEditUserModal(id) {
+  const user = allUsersList.find(u => u.id === id);
+  if (!user) return;
+
+  document.getElementById('user-modal-title').innerText = 'Editar Usuário';
+  document.getElementById('u-id').value = user.id;
+  document.getElementById('u-nome').value = user.nome || '';
+  document.getElementById('u-email').value = user.email || '';
+  document.getElementById('u-login').value = user.login || '';
+  document.getElementById('u-cpf').value = user.cpf || '';
+  
+  const senhaInput = document.getElementById('u-senha');
+  senhaInput.value = '';
+  senhaInput.required = false;
+  senhaInput.placeholder = 'Nova Senha (opcional)';
+  document.getElementById('u-senha-hint').style.display = 'block';
+
+  document.getElementById('u-perfil').value = user.perfil || 'MOBILE';
+  const selectedIds = (user.refeitorios || []).map(r => r.id);
+  updateUserModalRefeitorios(user.perfil || 'MOBILE', selectedIds);
+  openModal('user-modal');
 }
 
 document.getElementById('create-user-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const body = {
-    nome: document.getElementById('u-nome').value,
-    email: document.getElementById('u-email').value,
-    login: document.getElementById('u-login').value,
-    cpf: document.getElementById('u-cpf').value,
-    senha: document.getElementById('u-senha').value,
-    perfil: document.getElementById('u-perfil').value,
-  };
-  const res = await fetchAuth('/users', { method: 'POST', body: JSON.stringify(body) });
-  if(res.ok) {
-    closeModal('user-modal');
-    loadUsers();
-    document.getElementById('create-user-form').reset();
-  } else {
-    alert('Erro ao criar usuário');
+  const id = document.getElementById('u-id').value;
+  const nome = document.getElementById('u-nome').value.trim();
+  const email = document.getElementById('u-email').value.trim();
+  const login = document.getElementById('u-login').value.trim();
+  const cpf = document.getElementById('u-cpf').value.trim();
+  const senha = document.getElementById('u-senha').value;
+  const perfil = document.getElementById('u-perfil').value;
+
+  // Validação e captura de refeitórios
+  let refeitorios = [];
+  if (perfil === 'REFEICAO') {
+    const singleVal = document.getElementById('u-refeitorio-single')?.value;
+    if (!singleVal) {
+      alert('Para o perfil REFEICAO, você deve selecionar 1 refeitório autorizado.');
+      return;
+    }
+    refeitorios = [parseInt(singleVal)];
+  } else if (perfil === 'REFEICAO_MULTI') {
+    const checkedBoxes = document.querySelectorAll('.u-ref-chk:checked');
+    if (checkedBoxes.length === 0) {
+      alert('Para o perfil REFEICAO MULTI, você deve selecionar pelo menos 1 refeitório autorizado.');
+      return;
+    }
+    refeitorios = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+  }
+
+  const body = { nome, email, login, cpf, perfil, refeitorios };
+  if (senha && senha.trim()) {
+    body.senha = senha.trim();
+  }
+
+  try {
+    let res;
+    if (id) {
+      res = await fetchAuth(`/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    } else {
+      if (!senha || !senha.trim()) {
+        alert('A senha é obrigatória para novos usuários.');
+        return;
+      }
+      res = await fetchAuth('/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    }
+
+    if (res.ok) {
+      closeModal('user-modal');
+      loadUsers();
+      document.getElementById('create-user-form').reset();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Erro ao salvar usuário.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro de comunicação ao salvar usuário.');
   }
 });
 
 async function deleteUser(id) {
-  if(!confirm('Deseja excluir este usuário?')) return;
-  const res = await fetchAuth(`/users/${id}`, { method: 'DELETE' });
-  if(res.ok) loadUsers();
-  else alert('Erro ao excluir');
+  if (!confirm('Deseja realmente excluir este usuário?')) return;
+  try {
+    const res = await fetchAuth(`/users/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      loadUsers();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Erro ao excluir usuário.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro de comunicação ao excluir usuário.');
+  }
 }
 
 // Portarias
@@ -1368,5 +1749,481 @@ async function deleteVisitanteConfirm(id) {
     alert('Erro de conexão.');
   }
 }
+
+// ==================== REFEITÓRIOS ====================
+async function loadRefeitorios() {
+  const tbody = document.querySelector('#refeitorios-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 25px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.3rem; margin-right: 8px; color: var(--primary-color);"></i> Carregando refeitórios...</td></tr>';
+  
+  try {
+    const res = await fetchAuth('/refeitorios');
+    if (!res.ok) throw new Error('Erro ao buscar refeitórios');
+    allRefeitorios = await res.json();
+
+    if (allRefeitorios.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum refeitório cadastrado. Clique em "+ Novo Refeitório" para cadastrar.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = allRefeitorios.map(r => `
+      <tr>
+        <td style="font-weight: 600;">#${r.id}</td>
+        <td style="font-weight: 500;">${r.descricao}</td>
+        <td><span class="badge ${r.ativo ? 'success' : 'danger'}">${r.ativo ? 'Ativo' : 'Inativo'}</span></td>
+        <td>
+          <button class="btn secondary-btn" onclick="openEditRefeitorioModal(${r.id})" title="Editar"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn secondary-btn" onclick="deleteRefeitorio(${r.id})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join('');
+
+    populateRefeitoriosFilter(allRefeitorios);
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger);">Erro ao carregar lista de refeitórios.</td></tr>';
+  }
+}
+
+async function loadRefeitoriosOptions() {
+  try {
+    const res = await fetchAuth('/refeitorios');
+    if (res.ok) {
+      allRefeitorios = await res.json();
+      populateRefeitoriosFilter(allRefeitorios);
+    }
+  } catch (e) {
+    console.error('Erro ao carregar opções de refeitórios:', e);
+  }
+}
+
+function populateRefeitoriosFilter(list) {
+  const select = document.getElementById('refeicoes-refeitorio-filter');
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = '<option value="">Todos os Refeitórios</option>';
+  (list || []).forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.innerText = r.descricao + (r.ativo ? '' : ' (Inativo)');
+    select.appendChild(opt);
+  });
+  if (currentVal) select.value = currentVal;
+}
+
+function openCreateRefeitorioModal() {
+  document.getElementById('refeitorio-modal-title').innerText = 'Novo Refeitório';
+  document.getElementById('ref-id').value = '';
+  document.getElementById('ref-descricao').value = '';
+  document.getElementById('ref-status-group').style.display = 'none';
+  document.getElementById('ref-ativo').checked = true;
+  openModal('refeitorio-modal');
+}
+
+function openEditRefeitorioModal(id) {
+  const ref = allRefeitorios.find(r => r.id === id);
+  if (!ref) return;
+
+  document.getElementById('refeitorio-modal-title').innerText = 'Editar Refeitório';
+  document.getElementById('ref-id').value = ref.id;
+  document.getElementById('ref-descricao').value = ref.descricao;
+  document.getElementById('ref-status-group').style.display = 'block';
+  document.getElementById('ref-ativo').checked = Boolean(ref.ativo);
+  openModal('refeitorio-modal');
+}
+
+const refeitorioForm = document.getElementById('refeitorio-form');
+if (refeitorioForm) {
+  refeitorioForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('ref-id').value;
+    const descricao = document.getElementById('ref-descricao').value.trim();
+    const ativo = document.getElementById('ref-ativo').checked;
+
+    if (!descricao) {
+      alert('A descrição do refeitório é obrigatória.');
+      return;
+    }
+
+    try {
+      let res;
+      if (id) {
+        res = await fetchAuth(`/refeitorios/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ descricao, ativo })
+        });
+      } else {
+        res = await fetchAuth('/refeitorios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ descricao })
+        });
+      }
+
+      if (res.ok) {
+        closeModal('refeitorio-modal');
+        loadRefeitorios();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Erro ao salvar refeitório.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro de comunicação ao salvar refeitório.');
+    }
+  });
+}
+
+async function deleteRefeitorio(id) {
+  if (!confirm('Deseja realmente excluir ou inativar este refeitório?')) return;
+  try {
+    const res = await fetchAuth(`/refeitorios/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      if (res.status === 200) {
+        const data = await res.json();
+        alert(data.message || 'Refeitório inativado com sucesso.');
+      }
+      loadRefeitorios();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Erro ao remover refeitório.');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro de comunicação ao remover refeitório.');
+  }
+}
+
+// ==================== REFEIÇÕES (MARMITAS) ====================
+let currentRefeicoesData = [];
+let currentRefeicoesPage = 1;
+const REFEICOES_PER_PAGE = 20;
+
+async function loadLeiturasRefeicao() {
+  const tbody = document.querySelector('#refeicoes-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-right: 10px; color: var(--primary-color);"></i> Carregando leituras de refeições...</td></tr>';
+
+  const dataInicial = document.getElementById('refeicoes-data-inicial')?.value;
+  const dataFinal = document.getElementById('refeicoes-data-final')?.value;
+  const horaInicial = document.getElementById('refeicoes-hora-inicial')?.value;
+  const horaFinal = document.getElementById('refeicoes-hora-final')?.value;
+  const idRefeitorio = document.getElementById('refeicoes-refeitorio-filter')?.value;
+  const searchField = document.getElementById('refeicoes-search-field')?.value || 'matricula';
+  const searchInput = document.getElementById('refeicoes-search-input')?.value.trim();
+
+  const params = new URLSearchParams();
+  if (dataInicial) params.append('dataInicial', dataInicial);
+  if (dataFinal) params.append('dataFinal', dataFinal);
+  if (horaInicial) params.append('horaInicial', horaInicial);
+  if (horaFinal) params.append('horaFinal', horaFinal);
+  if (idRefeitorio) params.append('id_refeitorio', idRefeitorio);
+  if (searchInput) params.append(searchField, searchInput);
+
+  try {
+    const res = await fetchAuth(`/sync/leituras-refeicao?${params.toString()}`);
+    if (!res.ok) throw new Error('Erro ao carregar leituras de refeições');
+    let data = await res.json();
+
+    // Se o usuário logou com perfil REFEICAO ou REFEICAO_MULTI e tem refeitórios selecionados
+    const selecaoStr = localStorage.getItem('cprt_refeitorios_selecionados');
+    if (selecaoStr && (userProfile === 'REFEICAO' || userProfile === 'REFEICAO_MULTI')) {
+      try {
+        const selecionados = JSON.parse(selecaoStr);
+        const permitidosIds = selecionados.map(s => s.id);
+        const permitidosDesc = selecionados.map(s => s.descricao.toLowerCase());
+        
+        // Se não filtrou por um refeitório específico, restringe aos refeitórios do login
+        if (!idRefeitorio) {
+          data = data.filter(item => {
+            if (item.id_refeitorio && permitidosIds.includes(item.id_refeitorio)) return true;
+            if (item.refeitorio && permitidosDesc.includes(String(item.refeitorio).toLowerCase())) return true;
+            return false;
+          });
+        }
+      } catch (e) {
+        console.warn('Erro ao filtrar refeitórios da sessão:', e);
+      }
+    }
+
+    currentRefeicoesData = data;
+    currentRefeicoesPage = 1;
+    renderRefeicoesPage();
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger);">Erro ao carregar dados de refeições.</td></tr>';
+  }
+}
+
+function renderRefeicoesPage() {
+  const tbody = document.querySelector('#refeicoes-table tbody');
+  if (!tbody) return;
+  const totalRecords = currentRefeicoesData.length;
+  const totalPages = Math.ceil(totalRecords / REFEICOES_PER_PAGE) || 1;
+
+  if (currentRefeicoesPage > totalPages) currentRefeicoesPage = totalPages;
+  if (currentRefeicoesPage < 1) currentRefeicoesPage = 1;
+
+  const totalCountEl = document.getElementById('refeicoes-total-count');
+  if (totalCountEl) totalCountEl.innerText = `Total de registros: ${totalRecords}`;
+
+  const pageInfoEl = document.getElementById('refeicoes-page-info');
+  if (pageInfoEl) pageInfoEl.innerText = `Página ${currentRefeicoesPage} de ${totalPages}`;
+
+  const prevBtn = document.getElementById('btn-refeicoes-prev');
+  if (prevBtn) prevBtn.disabled = currentRefeicoesPage <= 1;
+
+  const nextBtn = document.getElementById('btn-refeicoes-next');
+  if (nextBtn) nextBtn.disabled = currentRefeicoesPage >= totalPages;
+
+  if (!currentRefeicoesData || totalRecords === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">Nenhuma entrega de refeição encontrada para os filtros aplicados.</td></tr>';
+    return;
+  }
+
+  const isHidden = (colIndex) => {
+    const cb = document.querySelector(`#column-menu-refeicoes input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
+
+  const startIndex = (currentRefeicoesPage - 1) * REFEICOES_PER_PAGE;
+  const pageItems = currentRefeicoesData.slice(startIndex, startIndex + REFEICOES_PER_PAGE);
+
+  tbody.innerHTML = pageItems.map(l => {
+    const encarregadoNome = l.encarregado || l.nome_encarregado || 'Não Informado';
+    const hasEncarregado = encarregadoNome && encarregadoNome !== 'Não Informado';
+    return `
+      <tr>
+        <td data-col="0" class="${isHidden(0) ? 'hidden-col' : ''}">${l.matricula || '-'}</td>
+        <td data-col="1" class="${isHidden(1) ? 'hidden-col' : ''}">${l.nome || 'N/A'}</td>
+        <td data-col="2" class="${isHidden(2) ? 'hidden-col' : ''}">
+          <span style="${hasEncarregado ? 'color: #93c5fd; font-weight: 500;' : 'color: var(--text-muted);'}">
+            <i class="fa-solid fa-user-tie" style="font-size: 0.75rem; margin-right: 5px; opacity: 0.7;"></i>${encarregadoNome}
+          </span>
+        </td>
+        <td data-col="3" class="${isHidden(3) ? 'hidden-col' : ''}">${l.credencial}</td>
+        <td data-col="4" class="${isHidden(4) ? 'hidden-col' : ''}">${new Date(l.data_hora_leitura).toLocaleString()}</td>
+        <td data-col="5" class="${isHidden(5) ? 'hidden-col' : ''}"><span style="font-weight: 600; color: #60a5fa;"><i class="fa-solid fa-utensils" style="font-size: 0.8rem; margin-right: 5px;"></i>${l.refeitorio || 'Não Informado'}</span></td>
+        <td data-col="6" class="${isHidden(6) ? 'hidden-col' : ''}"><span class="badge ${l.situacao === 1 ? 'success' : 'danger'}">${l.situacao === 1 ? 'Permitido' : 'Bloqueado'}</span></td>
+        <td data-col="7" class="${isHidden(7) ? 'hidden-col' : ''}">${l.id_celular}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function changeRefeicoesPage(delta) {
+  currentRefeicoesPage += delta;
+  renderRefeicoesPage();
+}
+
+function clearLeiturasRefeicaoFilters() {
+  if (document.getElementById('refeicoes-data-inicial')) document.getElementById('refeicoes-data-inicial').value = '';
+  if (document.getElementById('refeicoes-data-final')) document.getElementById('refeicoes-data-final').value = '';
+  if (document.getElementById('refeicoes-hora-inicial')) document.getElementById('refeicoes-hora-inicial').value = '';
+  if (document.getElementById('refeicoes-hora-final')) document.getElementById('refeicoes-hora-final').value = '';
+  if (document.getElementById('refeicoes-refeitorio-filter')) document.getElementById('refeicoes-refeitorio-filter').value = '';
+  if (document.getElementById('refeicoes-search-field')) document.getElementById('refeicoes-search-field').value = 'matricula';
+  if (document.getElementById('refeicoes-search-input')) document.getElementById('refeicoes-search-input').value = '';
+  loadLeiturasRefeicao();
+}
+
+function toggleColumnMenuRefeicoes() {
+  const menu = document.getElementById('column-menu-refeicoes');
+  if (menu) menu.classList.toggle('hidden');
+}
+
+function toggleColumnRefeicoes(colIndex) {
+  const checkbox = document.querySelector(`#column-menu-refeicoes input[value="${colIndex}"]`);
+  if (!checkbox) return;
+  const isChecked = checkbox.checked;
+  const th = document.querySelector(`#refeicoes-table th[data-col="${colIndex}"]`);
+  const tds = document.querySelectorAll(`#refeicoes-table td[data-col="${colIndex}"]`);
+
+  if (isChecked) {
+    if (th) th.classList.remove('hidden-col');
+    tds.forEach(td => td.classList.remove('hidden-col'));
+  } else {
+    if (th) th.classList.add('hidden-col');
+    tds.forEach(td => td.classList.add('hidden-col'));
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('column-menu-refeicoes');
+  const btn = document.querySelector('button[onclick="toggleColumnMenuRefeicoes()"]');
+  if (menu && btn && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.add('hidden');
+  }
+});
+
+function exportLeiturasRefeicaoExcel() {
+  if (!currentRefeicoesData || currentRefeicoesData.length === 0) return;
+
+  const isHidden = (colIndex) => {
+    const cb = document.querySelector(`#column-menu-refeicoes input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
+
+  const columnsMap = [
+    { index: 0, title: 'Matrícula', key: l => l.matricula || '-' },
+    { index: 1, title: 'Nome', key: l => l.nome || 'N/A' },
+    { index: 2, title: 'Encarregado', key: l => l.encarregado || l.nome_encarregado || 'Não Informado' },
+    { index: 3, title: 'Credencial', key: l => l.credencial },
+    { index: 4, title: 'Data/Hora Leitura', key: l => new Date(l.data_hora_leitura).toLocaleString() },
+    { index: 5, title: 'Refeitório', key: l => l.refeitorio || 'Não Informado' },
+    { index: 6, title: 'Situação', key: l => l.situacao === 1 ? 'Permitido' : 'Bloqueado' },
+    { index: 7, title: 'ID Celular', key: l => l.id_celular }
+  ];
+
+  const activeColumns = columnsMap.filter(col => !isHidden(col.index));
+
+  const exportData = currentRefeicoesData.map(l => {
+    const row = {};
+    activeColumns.forEach(col => {
+      row[col.title] = col.key(l);
+    });
+    return row;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Refeições");
+  XLSX.writeFile(wb, 'leituras_refeicoes.xlsx');
+}
+
+function exportLeiturasRefeicaoPDF() {
+  if (!currentRefeicoesData || currentRefeicoesData.length === 0) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'pt', 'a4');
+
+  const isHidden = (colIndex) => {
+    const cb = document.querySelector(`#column-menu-refeicoes input[value="${colIndex}"]`);
+    return cb && !cb.checked;
+  };
+
+  const columnsMap = [
+    { index: 0, title: 'Matrícula', key: l => l.matricula || '-' },
+    { index: 1, title: 'Nome', key: l => l.nome || 'N/A' },
+    { index: 2, title: 'Encarregado', key: l => l.encarregado || l.nome_encarregado || 'Não Informado' },
+    { index: 3, title: 'Credencial', key: l => l.credencial },
+    { index: 4, title: 'Data/Hora Leitura', key: l => new Date(l.data_hora_leitura).toLocaleString() },
+    { index: 5, title: 'Refeitório', key: l => l.refeitorio || 'Não Informado' },
+    { index: 6, title: 'Situação', key: l => l.situacao === 1 ? 'Permitido' : 'Bloqueado' },
+    { index: 7, title: 'ID Celular', key: l => l.id_celular }
+  ];
+
+  const activeColumns = columnsMap.filter(col => !isHidden(col.index));
+  const headers = activeColumns.map(col => col.title);
+  const data = currentRefeicoesData.map(l => activeColumns.map(col => col.key(l)));
+
+  doc.text("Relatório de Entregas de Refeições (Marmitas)", 40, 40);
+
+  doc.autoTable({
+    head: [headers],
+    body: data,
+    startY: 50,
+    theme: 'grid',
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] }
+  });
+
+  doc.save('leituras_refeicoes.pdf');
+}
+
+// ==================== IMPORTAÇÃO DE ENCARREGADOS (EXCEL) ====================
+function openImportarEncarregadosModal() {
+  const form = document.getElementById('importar-encarregados-form');
+  if (form) form.reset();
+  const statusDiv = document.getElementById('importar-encarregados-status');
+  if (statusDiv) {
+    statusDiv.style.display = 'none';
+    statusDiv.innerHTML = '';
+  }
+  const btn = document.getElementById('btn-submit-encarregados');
+  if (btn) btn.disabled = false;
+  openModal('importar-encarregados-modal');
+}
+
+const encarregadosForm = document.getElementById('importar-encarregados-form');
+if (encarregadosForm) {
+  encarregadosForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('encarregados-file-input');
+    const statusDiv = document.getElementById('importar-encarregados-status');
+    const btn = document.getElementById('btn-submit-encarregados');
+
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      alert('Selecione um arquivo Excel para importar.');
+      return;
+    }
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    btn.disabled = true;
+    statusDiv.style.display = 'block';
+    statusDiv.style.background = 'rgba(59, 130, 246, 0.15)';
+    statusDiv.style.color = '#93c5fd';
+    statusDiv.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+    statusDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="margin-right: 8px;"></i> Processando planilha, comparando nomes e vinculando encarregados...';
+
+    try {
+      const res = await fetchAuth('/pessoas/importar-encarregados', {
+        method: 'POST',
+        body: formData,
+        isFormData: true
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        statusDiv.style.background = 'rgba(16, 185, 129, 0.15)';
+        statusDiv.style.color = '#34d399';
+        statusDiv.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+        statusDiv.innerHTML = `
+          <strong><i class="fa-solid fa-circle-check"></i> Sucesso!</strong><br>
+          ${data.vinculadosPessoas} colaboradores vinculados aos seus encarregados.<br>
+          ${data.leiturasAtualizadasCount} leituras no histórico atualizadas retroativamente.
+        `;
+
+        loadLeiturasRefeicao();
+
+        setTimeout(() => {
+          closeModal('importar-encarregados-modal');
+        }, 2500);
+      } else {
+        statusDiv.style.background = 'rgba(239, 68, 68, 0.15)';
+        statusDiv.style.color = '#f87171';
+        statusDiv.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        statusDiv.innerHTML = `<strong><i class="fa-solid fa-circle-xmark"></i> Erro:</strong> ${data.error || 'Falha ao processar arquivo.'}`;
+        btn.disabled = false;
+      }
+    } catch (err) {
+      console.error(err);
+      statusDiv.style.background = 'rgba(239, 68, 68, 0.15)';
+      statusDiv.style.color = '#f87171';
+      statusDiv.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+      statusDiv.innerHTML = '<strong><i class="fa-solid fa-circle-xmark"></i> Erro:</strong> Falha de comunicação ao enviar arquivo.';
+      btn.disabled = false;
+    }
+  });
+}
+
+// Expõe globalmente e anexa evento ao botão
+window.openImportarEncarregadosModal = openImportarEncarregadosModal;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btnOpen = document.getElementById('btn-open-importar-encarregados');
+  if (btnOpen) {
+    btnOpen.addEventListener('click', (e) => {
+      e.preventDefault();
+      openImportarEncarregadosModal();
+    });
+  }
+});
+
+
 
 
