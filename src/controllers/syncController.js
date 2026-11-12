@@ -57,17 +57,28 @@ export async function syncLeituras(request, reply) {
   let count = 0;
 
   try {
+    const portariasExistentes = await prisma.portaria.findMany({ select: { id: true } });
+    const portariaIdsValidos = new Set(portariasExistentes.map(p => p.id));
+
     for (const leitura of leituras) {
-      // leitura = { credencial, id_portaria, data_hora_leitura, id_celular, situacao }
-      
+      if (!leitura) continue;
+
+      const rawPortariaId = leitura.id_portaria ? parseInt(leitura.id_portaria) : null;
+      const portariaValida = rawPortariaId && portariaIdsValidos.has(rawPortariaId) ? rawPortariaId : (portariasExistentes[0]?.id || 1);
+
+      let dataHoraLeitura = new Date(leitura.data_hora_leitura);
+      if (isNaN(dataHoraLeitura.getTime())) {
+        dataHoraLeitura = new Date();
+      }
+
       await prisma.leituraRFID.create({
         data: {
-          credencial: leitura.credencial,
-          id_portaria: parseInt(leitura.id_portaria),
-          data_hora_leitura: new Date(leitura.data_hora_leitura),
+          credencial: String(leitura.credencial || '').trim(),
+          id_portaria: portariaValida,
+          data_hora_leitura: dataHoraLeitura,
           data_hora_sincronizacao: new Date(),
-          id_celular: leitura.id_celular,
-          situacao: parseInt(leitura.situacao)
+          id_celular: String(leitura.id_celular || 'CELULAR_DESCONHECIDO').trim(),
+          situacao: isNaN(parseInt(leitura.situacao)) ? 0 : parseInt(leitura.situacao)
         }
       });
       count++;
@@ -78,8 +89,8 @@ export async function syncLeituras(request, reply) {
 
     return reply.status(200).send({ message: `${count} leituras sincronizadas com sucesso.`, count });
   } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: 'Erro ao sincronizar leituras.' });
+    console.error('Erro ao sincronizar leituras:', error);
+    return reply.status(500).send({ error: `Erro ao sincronizar leituras: ${error.message || error}` });
   }
 }
 
@@ -288,23 +299,49 @@ export async function syncLeiturasVeiculo(request, reply) {
   let count = 0;
 
   try {
+    // Buscar portarias ativas para garantir integridade referencial sem travar sincronização
+    const portariasExistentes = await prisma.portaria.findMany({ select: { id: true } });
+    const portariaIdsValidos = new Set(portariasExistentes.map(p => p.id));
+
     for (const leitura of leituras) {
-      // leitura = { id, placa, matricula_condutor, nome_condutor, credencial_condutor, data_hora_leitura, id_celular, situacao }
-      
-      await prisma.leituraVeiculo.create({
-        data: {
-          id: leitura.id,
-          placa: leitura.placa,
-          matricula_condutor: leitura.matricula_condutor,
-          nome_condutor: leitura.nome_condutor,
-          credencial_condutor: leitura.credencial_condutor,
-          data_hora_leitura: new Date(leitura.data_hora_leitura),
+      if (!leitura) continue;
+
+      const id = leitura.id ? String(leitura.id).trim() : null;
+      if (!id) continue;
+
+      const rawPortariaId = leitura.id_portaria ? parseInt(leitura.id_portaria) : null;
+      const idPortariaFinal = rawPortariaId && portariaIdsValidos.has(rawPortariaId) ? rawPortariaId : null;
+
+      const situacaoParsed = parseInt(leitura.situacao);
+      const situacaoFinal = isNaN(situacaoParsed) ? 0 : situacaoParsed;
+
+      let dataHoraLeitura = new Date(leitura.data_hora_leitura);
+      if (isNaN(dataHoraLeitura.getTime())) {
+        dataHoraLeitura = new Date();
+      }
+
+      const isCondutorFinal = leitura.is_condutor !== undefined
+        ? (leitura.is_condutor === true || leitura.is_condutor === 'true' || leitura.is_condutor === 1 || leitura.is_condutor === '1')
+        : true;
+
+      await prisma.leituraVeiculo.upsert({
+        where: { id },
+        update: {
+          data_hora_sincronizacao: new Date()
+        },
+        create: {
+          id,
+          placa: String(leitura.placa || 'SEM_PLACA').trim().toUpperCase(),
+          matricula_condutor: String(leitura.matricula_condutor || '-').trim(),
+          nome_condutor: String(leitura.nome_condutor || 'Não Informado').trim(),
+          credencial_condutor: leitura.credencial_condutor ? String(leitura.credencial_condutor).trim() : null,
+          data_hora_leitura: dataHoraLeitura,
           data_hora_sincronizacao: new Date(),
-          id_celular: leitura.id_celular,
-          situacao: parseInt(leitura.situacao),
-          id_portaria: leitura.id_portaria ? parseInt(leitura.id_portaria) : null,
-          sentido: leitura.sentido || null,
-          is_condutor: leitura.is_condutor !== undefined ? (leitura.is_condutor === true || leitura.is_condutor === 'true' || leitura.is_condutor === 1 || leitura.is_condutor === '1') : true
+          id_celular: String(leitura.id_celular || 'CELULAR_DESCONHECIDO').trim(),
+          situacao: situacaoFinal,
+          id_portaria: idPortariaFinal,
+          sentido: leitura.sentido ? String(leitura.sentido).trim() : null,
+          is_condutor: isCondutorFinal
         }
       });
       count++;
@@ -314,8 +351,8 @@ export async function syncLeiturasVeiculo(request, reply) {
 
     return reply.status(200).send({ message: `${count} leituras de veículo sincronizadas com sucesso.`, count });
   } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: 'Erro ao sincronizar leituras de veículos.' });
+    console.error('Erro ao sincronizar leituras de veículos:', error);
+    return reply.status(500).send({ error: `Erro ao sincronizar leituras de veículos: ${error.message || error}` });
   }
 }
 
@@ -467,28 +504,57 @@ export async function syncLeiturasRefeicao(request, reply) {
     }
 
     for (const leitura of leituras) {
-      const credStr = String(leitura.credencial).trim();
+      if (!leitura) continue;
+      const credStr = String(leitura.credencial || '').trim();
       const pInfo = pessoaMap[credStr] || (leitura.matricula ? matriculaMap[String(leitura.matricula).trim()] : null);
 
       const matricula = leitura.matricula && leitura.matricula !== '-' ? leitura.matricula : (pInfo ? pInfo.matricula : '-');
       const nome = leitura.nome && leitura.nome !== 'Não Cadastrado' ? leitura.nome : (pInfo ? pInfo.nome : 'Não Cadastrado');
-      const situacao = leitura.situacao !== undefined ? parseInt(leitura.situacao) : (pInfo ? pInfo.situacao : 0);
+      const situacaoNum = leitura.situacao !== undefined ? parseInt(leitura.situacao) : (pInfo ? pInfo.situacao : 0);
+      const situacao = isNaN(situacaoNum) ? 0 : situacaoNum;
       const encarregado = pInfo && pInfo.nome_encarregado ? pInfo.nome_encarregado.trim() : null;
 
-      await prisma.leituraRefeicao.create({
-        data: {
-          id: leitura.id || undefined,
-          credencial: credStr,
-          matricula,
-          nome,
-          nome_encarregado: encarregado,
-          data_hora_leitura: new Date(leitura.data_hora_leitura),
-          data_hora_sincronizacao: new Date(),
-          id_celular: leitura.id_celular || 'CELULAR_DESCONHECIDO',
-          situacao,
-          id_refeitorio: leitura.id_refeitorio ? parseInt(leitura.id_refeitorio) : null
-        }
-      });
+      let dataHora = new Date(leitura.data_hora_leitura);
+      if (isNaN(dataHora.getTime())) {
+        dataHora = new Date();
+      }
+
+      const idRefeicao = leitura.id ? String(leitura.id).trim() : null;
+
+      if (idRefeicao) {
+        await prisma.leituraRefeicao.upsert({
+          where: { id: idRefeicao },
+          update: {
+            data_hora_sincronizacao: new Date()
+          },
+          create: {
+            id: idRefeicao,
+            credencial: credStr,
+            matricula,
+            nome,
+            nome_encarregado: encarregado,
+            data_hora_leitura: dataHora,
+            data_hora_sincronizacao: new Date(),
+            id_celular: String(leitura.id_celular || 'CELULAR_DESCONHECIDO').trim(),
+            situacao,
+            id_refeitorio: leitura.id_refeitorio ? parseInt(leitura.id_refeitorio) : null
+          }
+        });
+      } else {
+        await prisma.leituraRefeicao.create({
+          data: {
+            credencial: credStr,
+            matricula,
+            nome,
+            nome_encarregado: encarregado,
+            data_hora_leitura: dataHora,
+            data_hora_sincronizacao: new Date(),
+            id_celular: String(leitura.id_celular || 'CELULAR_DESCONHECIDO').trim(),
+            situacao,
+            id_refeitorio: leitura.id_refeitorio ? parseInt(leitura.id_refeitorio) : null
+          }
+        });
+      }
       count++;
     }
 
@@ -496,8 +562,8 @@ export async function syncLeiturasRefeicao(request, reply) {
 
     return reply.status(200).send({ message: `${count} leituras de refeição sincronizadas com sucesso.`, count });
   } catch (error) {
-    console.error(error);
-    return reply.status(500).send({ error: 'Erro ao sincronizar leituras de refeição.' });
+    console.error('Erro ao sincronizar leituras de refeição:', error);
+    return reply.status(500).send({ error: `Erro ao sincronizar leituras de refeição: ${error.message || error}` });
   }
 }
 
